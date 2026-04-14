@@ -1,0 +1,16 @@
+{
+  "name": "Vladislav Cupnii — Senior Frontend Engineer",
+  "short_name": "VC Portfolio",
+  "description": "Senior Frontend Engineer. React, Next.js, TypeScript.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#06060f",
+  "theme_color": "#00d4ff",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

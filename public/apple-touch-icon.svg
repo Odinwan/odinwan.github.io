@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00d4ff"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <rect width="180" height="180" rx="40" fill="#06060f"/>
+  <rect x="3" y="3" width="174" height="174" rx="37" fill="none" stroke="url(#g)" stroke-width="3" opacity="0.4"/>
+  <text
+    x="90"
+    y="118"
+    text-anchor="middle"
+    font-family="'JetBrains Mono', 'Courier New', monospace"
+    font-weight="700"
+    font-size="76"
+    letter-spacing="-3"
+    fill="url(#g)"
+  >VC</text>
+</svg>
