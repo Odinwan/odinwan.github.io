@@ -11,23 +11,28 @@ const Experience: React.FC = () => {
   const tr = t[lang].experience;
 
   useEffect(() => {
-    const items = timelineRef.current?.querySelectorAll<HTMLElement>('.ti');
-    if (!items) return;
+    const timeline = timelineRef.current;
+    if (!timeline) return;
+
+    const items = Array.from(timeline.querySelectorAll<HTMLElement>('.ti'));
+    items.forEach(el => el.classList.remove('visible'));
 
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry, i) => {
+        entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            setTimeout(() => entry.target.classList.add('visible'), i * 80);
+            const idx = items.indexOf(entry.target as HTMLElement);
+            setTimeout(() => entry.target.classList.add('visible'), idx * 80);
+            observer.unobserve(entry.target);
           }
         });
       },
-      { threshold: 0.05 }
+      { threshold: 0.05, rootMargin: '0px 0px -30px 0px' }
     );
 
     items.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, []);
+  }, [lang]);
 
   return (
     <ExperienceWrapper id="experience">
