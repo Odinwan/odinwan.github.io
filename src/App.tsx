@@ -7,9 +7,13 @@ import Experience from '@components/Experience/Experience';
 import Projects from '@components/Projects/Projects';
 import Contact from '@components/Contact/Contact';
 import { AppWrapper, Footer } from './App.styled';
+import { useLanguage } from '@hooks/useLanguage';
+import { t } from './translations';
 
 const App: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { lang } = useLanguage();
+  const tr = t[lang].footer;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -94,8 +98,8 @@ const App: React.FC = () => {
       <Contact />
       <Footer>
         <div className="container">
-          <span className="copy">© 2026 Vladislav Cupnii. All rights reserved.</span>
-          <span className="mono">Moldova · React · TypeScript · Next.js</span>
+          <span className="copy">{tr.rights}</span>
+          <span className="mono">{tr.stack}</span>
         </div>
       </Footer>
     </AppWrapper>

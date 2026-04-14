@@ -184,6 +184,27 @@ export const HeroWrapper = styled.section`
     }
   }
 
+  .btn-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    border: 1px solid ${({ theme }) => theme.colors.cyan};
+    border-radius: 8px;
+    color: ${({ theme }) => theme.colors.cyan};
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    background: transparent;
+
+    &:hover {
+      background: ${({ theme }) => theme.colors.cyanDim};
+      transform: translateY(-2px);
+      box-shadow: ${({ theme }) => theme.shadows.glow};
+    }
+  }
+
   .btn-secondary {
     display: inline-flex;
     align-items: center;

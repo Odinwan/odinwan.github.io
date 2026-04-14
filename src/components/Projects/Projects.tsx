@@ -1,37 +1,14 @@
 import React, { useEffect, useRef } from 'react';
 import { ProjectsWrapper } from './Projects.styled';
 import { useScrollReveal } from '@hooks/useScrollReveal';
-
-const projects = [
-  {
-    icon: '🎨',
-    title: 'Design System / UI Kit',
-    desc: 'Built a full Design System in React + Mantine to unify interfaces across 10+ products. Includes an npm component library, complete Storybook documentation, Figma design token sync, and a unified theme architecture.',
-    tech: ['React', 'Mantine', 'Storybook', 'npm', 'Figma'],
-  },
-  {
-    icon: '🕷️',
-    title: 'Web Scraping System',
-    desc: 'High-performance scraping system for a news portal processing 5000+ pages across 60+ page types. Playwright-based crawler with robust type detection and content extraction pipeline.',
-    tech: ['Playwright', 'Node.js', 'TypeScript'],
-  },
-  {
-    icon: '🧩',
-    title: 'Chrome Extension',
-    desc: 'Sales-team Chrome Extension with real-time conversation context retrieval, WebSocket data transport, and AI-powered response generation through a custom backend integration.',
-    tech: ['Chrome API', 'WebSocket', 'TypeScript', 'React'],
-  },
-  {
-    icon: '📄',
-    title: 'Static Pages Platform',
-    desc: 'BFF + WordPress architecture for high-scale static page delivery with page versioning, MongoDB storage layer, and Redis caching for performance-critical content serving.',
-    tech: ['Next.js', 'WordPress', 'MongoDB', 'Redis'],
-  },
-];
+import { useLanguage } from '@hooks/useLanguage';
+import { t } from '../../translations';
 
 const Projects: React.FC = () => {
   const headRef = useScrollReveal();
   const gridRef = useRef<HTMLDivElement>(null);
+  const { lang } = useLanguage();
+  const tr = t[lang].projects;
 
   useEffect(() => {
     const cards = gridRef.current?.querySelectorAll<HTMLElement>('.pc');
@@ -56,19 +33,19 @@ const Projects: React.FC = () => {
     <ProjectsWrapper id="projects">
       <div className="container">
         <div className="head reveal" ref={headRef}>
-          <div className="s-label">Notable Work</div>
-          <h2 className="s-title">Interesting Projects</h2>
-          <p className="s-sub">Selected technical challenges with measurable real-world impact</p>
+          <div className="s-label">{tr.label}</div>
+          <h2 className="s-title">{tr.title}</h2>
+          <p className="s-sub">{tr.sub}</p>
         </div>
 
         <div className="grid" ref={gridRef}>
-          {projects.map((p) => (
+          {tr.list.map((p) => (
             <div className="pc" key={p.title}>
               <div className="icon">{p.icon}</div>
               <h3 className="title">{p.title}</h3>
               <p className="desc">{p.desc}</p>
               <div className="tech">
-                {p.tech.map((t) => <span key={t} className="tag">{t}</span>)}
+                {p.tech.map((tag) => <span key={tag} className="tag">{tag}</span>)}
               </div>
             </div>
           ))}

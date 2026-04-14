@@ -8,8 +8,7 @@ export const NavWrapper = styled.nav<{ $scrolled: boolean }>`
   align-items: center;
   justify-content: space-between;
   padding: ${({ $scrolled }) => ($scrolled ? '14px 60px' : '22px 60px')};
-  background: ${({ $scrolled, theme }) =>
-    $scrolled ? 'rgba(6,6,15,0.88)' : 'transparent'};
+  background: ${({ $scrolled }) => ($scrolled ? 'rgba(6,6,15,0.88)' : 'transparent')};
   backdrop-filter: ${({ $scrolled }) => ($scrolled ? 'blur(20px)' : 'none')};
   border-bottom: ${({ $scrolled, theme }) =>
     $scrolled ? `1px solid ${theme.colors.border}` : '1px solid transparent'};
@@ -51,9 +50,43 @@ export const NavWrapper = styled.nav<{ $scrolled: boolean }>`
     }
   }
 
+  .lang-switcher {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 24px;
+
+    button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: ${({ theme }) => theme.fonts.mono};
+      color: ${({ theme }) => theme.colors.muted};
+      padding: 4px 2px;
+      transition: color 0.2s;
+      letter-spacing: 0.5px;
+
+      &:hover { color: ${({ theme }) => theme.colors.cyan}; }
+
+      &.active {
+        color: ${({ theme }) => theme.colors.cyan};
+      }
+    }
+
+    .sep {
+      color: ${({ theme }) => theme.colors.border};
+      font-size: 12px;
+      user-select: none;
+    }
+  }
+
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
     padding: 14px 24px;
 
     .links { display: none; }
+
+    .lang-switcher { margin-left: auto; }
   }
 `;

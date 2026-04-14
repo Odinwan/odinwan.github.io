@@ -1,32 +1,32 @@
 import React from 'react';
 import { ContactWrapper } from './Contact.styled';
 import { useScrollReveal } from '@hooks/useScrollReveal';
-
-const links = [
-  { icon: '✉️', label: 'Email', value: 'vlad.kupnyy@gmail.com', href: 'mailto:vlad.kupnyy@gmail.com' },
-  { icon: '💼', label: 'LinkedIn', value: 'vladislav-cupnii', href: 'https://linkedin.com/in/vladislav-cupnii' },
-  { icon: '✈️', label: 'Telegram', value: '@Odinwan', href: 'https://t.me/Odinwan' },
-  { icon: '📱', label: 'Phone', value: '+373 777 90 714', href: 'tel:+37377790714' },
-];
+import { useLanguage } from '@hooks/useLanguage';
+import { t } from '../../translations';
 
 const Contact: React.FC = () => {
   const leftRef = useScrollReveal();
   const rightRef = useScrollReveal();
+  const { lang } = useLanguage();
+  const tr = t[lang].contact;
 
   return (
     <ContactWrapper id="contact">
       <div className="container">
         <div className="grid">
           <div className="info reveal" ref={leftRef}>
-            <div className="s-label">Get in touch</div>
-            <h2 className="s-title">Let's work together</h2>
-            <p>
-              Open to new opportunities — full-time roles, contract projects, or technical consultations.
-              Let's talk about how I can help your team build great products.
-            </p>
+            <div className="s-label">{tr.label}</div>
+            <h2 className="s-title">{tr.title}</h2>
+            <p>{tr.desc}</p>
             <div className="links">
-              {links.map((l) => (
-                <a key={l.label} href={l.href} target={l.href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" className="link">
+              {tr.links.map((l, i) => (
+                <a
+                  key={i}
+                  href={l.href}
+                  target={l.href.startsWith('http') ? '_blank' : undefined}
+                  rel="noopener noreferrer"
+                  className="link"
+                >
                   <div className="link-icon">{l.icon}</div>
                   <div className="link-text">
                     <div className="link-label">{l.label}</div>
@@ -42,12 +42,12 @@ const Contact: React.FC = () => {
             <span className="avail-icon">🚀</span>
             <div className="status">
               <span className="dot" />
-              Open to work
+              {tr.availStatus}
             </div>
-            <h3>Ready for new challenges</h3>
-            <p>Looking for exciting roles in frontend engineering, full-stack, or technical leadership.</p>
+            <h3>{tr.availTitle}</h3>
+            <p>{tr.availDesc}</p>
             <a href="mailto:vlad.kupnyy@gmail.com" className="btn-primary">
-              Send me a message →
+              {tr.sendMsg}
             </a>
           </div>
         </div>
