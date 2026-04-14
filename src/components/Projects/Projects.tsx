@@ -11,23 +11,30 @@ const Projects: React.FC = () => {
   const tr = t[lang].projects;
 
   useEffect(() => {
-    const cards = gridRef.current?.querySelectorAll<HTMLElement>('.pc');
-    if (!cards) return;
+    const grid = gridRef.current;
+    if (!grid) return;
+
+    // Reset visibility on language change so new elements animate in
+    const cards = Array.from(grid.querySelectorAll<HTMLElement>('.pc'));
+    cards.forEach(el => el.classList.remove('visible'));
 
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry, i) => {
+        entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            setTimeout(() => entry.target.classList.add('visible'), i * 100);
+            // Use DOM index for correct stagger regardless of callback batch
+            const idx = cards.indexOf(entry.target as HTMLElement);
+            setTimeout(() => entry.target.classList.add('visible'), idx * 120);
+            observer.unobserve(entry.target);
           }
         });
       },
-      { threshold: 0.08 }
+      { threshold: 0.05, rootMargin: '0px 0px -40px 0px' }
     );
 
     cards.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, []);
+  }, [lang]);
 
   return (
     <ProjectsWrapper id="projects">
