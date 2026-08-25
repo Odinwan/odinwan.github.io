@@ -5,12 +5,12 @@ import { useLanguage } from '@hooks/useLanguage';
 import { t } from '../../translations';
 
 const groups = [
-  { title: 'Frontend', tags: ['React', 'Next.js', 'TypeScript', 'React Native', 'HTML5', 'CSS3', 'SCSS'], highlight: ['React', 'Next.js', 'TypeScript'] },
-  { title: 'State Management', tags: ['Redux', 'RxJS', 'MobX', 'Effector'], highlight: ['Redux'] },
+  { title: 'Frontend', tags: ['React', 'Next.js', 'Nuxt.js', 'TypeScript', 'React Native', 'HTML5', 'CSS3', 'SCSS', 'Styled Components'], highlight: ['React', 'Next.js', 'TypeScript'] },
+  { title: 'State Management', tags: ['Redux', 'RxJS', 'MobX', 'Effector'], highlight: ['Redux', 'RxJS'] },
   { title: 'UI Libraries', tags: ['Mantine', 'Material UI', 'Ant Design', 'Arc UI'], highlight: ['Mantine'] },
-  { title: 'Backend', tags: ['Node.js', 'NestJS', 'Express.js', 'REST API', 'GraphQL'], highlight: [] as string[] },
-  { title: 'Infrastructure', tags: ['MongoDB', 'Redis', 'Docker', 'CI/CD', 'Firebase'], highlight: [] as string[] },
-  { title: 'Tools & AI', tags: ['Storybook', 'Playwright', 'Webpack', 'Vite', 'ChatGPT', 'Claude', 'Copilot'], highlight: [] as string[] },
+  { title: 'API & Data', tags: ['REST', 'GraphQL', 'WebSocket', 'MongoDB', 'Redis'], highlight: [] as string[] },
+  { title: 'Tools', tags: ['Storybook', 'Playwright', 'Webpack', 'Vite', 'Git', 'Locize', 'Formik'], highlight: ['Storybook', 'Playwright'] },
+  { title: 'AI', tags: ['Codex', 'Claude', 'GitHub Copilot'], highlight: [] as string[] },
 ];
 
 const Skills: React.FC = () => {

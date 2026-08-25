@@ -37,11 +37,11 @@ const Hero: React.FC<Props> = ({ canvasRef }) => {
 
           <div className="stats">
             <div className="stat">
-              <span className="val">8+</span>
+              <span className="val">9</span>
               <span className="lbl">{tr.yearsLabel}</span>
             </div>
             <div className="stat">
-              <span className="val">9</span>
+              <span className="val">6</span>
               <span className="lbl">{tr.companiesLabel}</span>
             </div>
             <div className="stat">
@@ -74,7 +74,7 @@ const Hero: React.FC<Props> = ({ canvasRef }) => {
               </div>
             </div>
             <div className="badge-card card-top">
-              <div className="vl grad">8+</div>
+              <div className="vl grad">9</div>
               <div className="sm">{tr.yearsLabel}</div>
             </div>
           </div>

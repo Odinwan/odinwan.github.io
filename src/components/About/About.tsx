@@ -24,6 +24,10 @@ const About: React.FC = () => {
             <p dangerouslySetInnerHTML={{ __html: tr.p1 }} />
             <p dangerouslySetInnerHTML={{ __html: tr.p2 }} />
             <p dangerouslySetInnerHTML={{ __html: tr.p3 }} />
+            <div className="facts">
+              <div className="fact"><span className="fact-label">{tr.eduLabel}</span><span className="fact-value">{tr.edu}</span></div>
+              <div className="fact"><span className="fact-label">{tr.langLabel}</span><span className="fact-value">{tr.langs}</span></div>
+            </div>
           </div>
 
           <div className="cards reveal" ref={cardsRef}>
