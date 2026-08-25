@@ -63,6 +63,35 @@ export const AboutWrapper = styled.section`
 
       &:last-child { margin-bottom: 0; }
     }
+
+    .facts {
+      margin-top: 28px;
+      padding-top: 22px;
+      border-top: 1px solid ${({ theme }) => theme.colors.border};
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .fact {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .fact-label {
+      font-family: ${({ theme }) => theme.fonts.mono};
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: ${({ theme }) => theme.colors.cyan};
+    }
+
+    .fact-value {
+      color: ${({ theme }) => theme.colors.text};
+      font-size: 15px;
+      line-height: 1.6;
+    }
   }
 
   /* RIGHT — highlight cards */
