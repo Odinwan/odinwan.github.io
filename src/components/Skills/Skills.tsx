@@ -5,11 +5,12 @@ import { useLanguage } from '@hooks/useLanguage';
 import { t } from '../../translations';
 
 const groups = [
-  { title: 'Frontend', tags: ['React', 'Next.js', 'Nuxt.js', 'TypeScript', 'React Native', 'HTML5', 'CSS3', 'SCSS', 'Styled Components'], highlight: ['React', 'Next.js', 'TypeScript'] },
-  { title: 'State Management', tags: ['Redux', 'RxJS', 'MobX', 'Effector'], highlight: ['Redux', 'RxJS'] },
-  { title: 'UI Libraries', tags: ['Mantine', 'Material UI', 'Ant Design', 'Arc UI'], highlight: ['Mantine'] },
-  { title: 'API & Data', tags: ['REST', 'GraphQL', 'WebSocket', 'MongoDB', 'Redis'], highlight: [] as string[] },
-  { title: 'Tools', tags: ['Storybook', 'Playwright', 'Webpack', 'Vite', 'Git', 'Locize', 'Formik'], highlight: ['Storybook', 'Playwright'] },
+  { title: 'Frontend', tags: ['React', 'Next.js', 'TypeScript', 'JavaScript', 'React Native', 'HTML5', 'CSS3', 'SCSS', 'Styled Components'], highlight: ['React', 'Next.js', 'TypeScript'] },
+  { title: 'Backend & Data', tags: ['Node.js', 'Express.js', 'REST APIs', 'WebSocket', 'MongoDB', 'Redis', 'Firebase / Firestore'], highlight: ['Node.js', 'Express.js'] },
+  { title: 'State Management', tags: ['Redux', 'Effector', 'RxJS', 'MobX'], highlight: ['Redux', 'Effector'] },
+  { title: 'UI Libraries', tags: ['Mantine', 'Material UI', 'Ant Design'], highlight: ['Mantine'] },
+  { title: 'Tooling', tags: ['Storybook', 'Playwright', 'Vite', 'Webpack', 'Git'], highlight: ['Storybook', 'Playwright'] },
+  { title: 'Delivery & DevOps', tags: ['Docker', 'GitHub Actions', 'CI/CD', 'Architecture', 'Hiring', 'Estimation'], highlight: ['Docker', 'GitHub Actions'] },
   { title: 'AI', tags: ['Codex', 'Claude', 'GitHub Copilot'], highlight: [] as string[] },
 ];
 

@@ -53,6 +53,7 @@ const Experience: React.FC = () => {
                   <div className="period">{job.period}</div>
                 </div>
                 <div className="company">{job.company}</div>
+                {'note' in job && <div className="note">{job.note}</div>}
                 <ul className="list">
                   {job.items.map((item) => (
                     <li key={item}>{item}</li>
