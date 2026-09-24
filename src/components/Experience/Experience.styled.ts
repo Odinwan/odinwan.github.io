@@ -134,6 +134,14 @@ export const ExperienceWrapper = styled.section`
       margin-bottom: 14px;
     }
 
+    .note {
+      font-size: 12px;
+      color: ${({ theme }) => theme.colors.dim};
+      font-style: italic;
+      margin-top: -8px;
+      margin-bottom: 14px;
+    }
+
     .list {
       list-style: none;
       display: flex;

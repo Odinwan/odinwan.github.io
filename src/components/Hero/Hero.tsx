@@ -30,18 +30,18 @@ const Hero: React.FC<Props> = ({ canvasRef }) => {
           </h1>
 
           <p className="title">
-            <span className="br">&lt;</span> Senior Frontend Engineer <span className="br">/&gt;</span>
+            <span className="br">&lt;</span> Senior Fullstack Developer <span className="br">/&gt;</span>
           </p>
 
           <p className="desc" dangerouslySetInnerHTML={{ __html: tr.desc }} />
 
           <div className="stats">
             <div className="stat">
-              <span className="val">9</span>
+              <span className="val">8+</span>
               <span className="lbl">{tr.yearsLabel}</span>
             </div>
             <div className="stat">
-              <span className="val">6</span>
+              <span className="val">7</span>
               <span className="lbl">{tr.companiesLabel}</span>
             </div>
             <div className="stat">
@@ -53,7 +53,7 @@ const Hero: React.FC<Props> = ({ canvasRef }) => {
           <div className="actions">
             <a href="#experience" className="btn-primary">{tr.viewExp}</a>
             <a
-              href="/CV_VLADISLAV_CUPNII.pdf"
+              href="/Vladislav_Cupnii_Senior_Fullstack_CV.pdf"
               download
               className="btn-download"
             >
@@ -70,11 +70,11 @@ const Hero: React.FC<Props> = ({ canvasRef }) => {
               <span className="icon">⚡</span>
               <div>
                 <div className="sm">{tr.currentFocus}</div>
-                <div className="vl">React & Next.js</div>
+                <div className="vl">React · Next.js · Node.js</div>
               </div>
             </div>
             <div className="badge-card card-top">
-              <div className="vl grad">9</div>
+              <div className="vl grad">8+</div>
               <div className="sm">{tr.yearsLabel}</div>
             </div>
           </div>
