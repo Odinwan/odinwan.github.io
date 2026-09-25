@@ -146,6 +146,7 @@ export const ProjectsWrapper = styled.section`
 
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
     padding: 70px 0;
+    .reveal, .pc { transition-duration: 0.3s; }
     .container { padding: 0 24px; }
 
     /* Clamp the description to three lines until the card is expanded. */
