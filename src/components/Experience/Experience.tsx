@@ -1,14 +1,20 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ExperienceWrapper } from './Experience.styled';
 import { useScrollReveal } from '@hooks/useScrollReveal';
 import { useLanguage } from '@hooks/useLanguage';
 import { t } from '../../translations';
+
+/** Bullets shown per job on mobile before the "more" toggle. */
+const COLLAPSED_ITEMS = 3;
 
 const Experience: React.FC = () => {
   const headRef = useScrollReveal();
   const timelineRef = useRef<HTMLDivElement>(null);
   const { lang } = useLanguage();
   const tr = t[lang].experience;
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  const toggle = (key: string) => setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
 
   useEffect(() => {
     const timeline = timelineRef.current;
@@ -47,24 +53,34 @@ const Experience: React.FC = () => {
         </div>
 
         <div className="timeline" ref={timelineRef}>
-          {tr.jobs.map((job) => (
-            <div className="ti" key={`${job.company}-${job.role}`}>
-              <div className={`dot ${job.current ? 'cur' : ''}`} />
-              <div className="card">
-                <div className="card-header">
-                  <div className="role">{job.role}</div>
-                  <div className="period">{job.period}</div>
+          {tr.jobs.map((job) => {
+            const key = `${job.company}-${job.role}`;
+            const hidden = job.items.length - COLLAPSED_ITEMS;
+            const isOpen = !!expanded[key];
+            return (
+              <div className="ti" key={key}>
+                <div className={`dot ${job.current ? 'cur' : ''}`} />
+                <div className="card">
+                  <div className="card-header">
+                    <div className="role">{job.role}</div>
+                    <div className="period">{job.period}</div>
+                  </div>
+                  <div className="company">{job.company}</div>
+                  {'note' in job && <div className="note">{job.note}</div>}
+                  <ul className={`list ${isOpen ? 'open' : ''}`}>
+                    {job.items.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                  {hidden > 0 && (
+                    <button type="button" className="more" onClick={() => toggle(key)} aria-expanded={isOpen}>
+                      {isOpen ? tr.less : `+${hidden} ${tr.more}`}
+                    </button>
+                  )}
                 </div>
-                <div className="company">{job.company}</div>
-                {'note' in job && <div className="note">{job.note}</div>}
-                <ul className="list">
-                  {job.items.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </ExperienceWrapper>

@@ -1,5 +1,8 @@
 import styled, { keyframes } from 'styled-components';
 
+/** Keep in sync with COLLAPSED_ITEMS in Experience.tsx. */
+const COLLAPSED_ITEMS = 3;
+
 const pulseDot = keyframes`
   0%, 100% { box-shadow: 0 0 0 4px rgba(16,185,129,0.2); }
   50% { box-shadow: 0 0 0 8px rgba(16,185,129,0.08); }
@@ -167,8 +170,30 @@ export const ExperienceWrapper = styled.section`
     }
   }
 
+  .more {
+    display: none;
+    margin-top: 14px;
+    padding: 8px 14px;
+    border: 1px solid ${({ theme }) => theme.colors.border};
+    border-radius: 8px;
+    background: transparent;
+    color: ${({ theme }) => theme.colors.cyan};
+    font-family: ${({ theme }) => theme.fonts.mono};
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color 0.3s ease, background 0.3s ease;
+
+    &:hover {
+      border-color: ${({ theme }) => theme.colors.borderHover};
+      background: ${({ theme }) => theme.colors.cyanDim};
+    }
+  }
+
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
     padding: 70px 0;
     .container { padding: 0 24px; }
+
+    .card .list:not(.open) li:nth-child(n + ${COLLAPSED_ITEMS + 1}) { display: none; }
+    .more { display: inline-flex; }
   }
 `;

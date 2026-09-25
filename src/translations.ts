@@ -46,6 +46,8 @@ export const t = {
       label: 'Work History',
       title: 'Experience',
       sub: 'From Bitrix Developer to Technical Lead — 8+ years, 7 companies, products shipped end to end',
+      more: 'more',
+      less: 'Show less',
       jobs: [
         {
           role: 'Senior Frontend Developer',
@@ -242,6 +244,8 @@ export const t = {
       label: 'История работы',
       title: 'Опыт работы',
       sub: 'От Bitrix-разработчика до Technical Lead — 8+ лет, 7 компаний, продукты, запущенные от начала до конца',
+      more: 'ещё',
+      less: 'Свернуть',
       jobs: [
         {
           role: 'Senior Frontend Developer',
