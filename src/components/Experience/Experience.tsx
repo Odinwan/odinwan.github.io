@@ -19,13 +19,16 @@ const Experience: React.FC = () => {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const idx = items.indexOf(entry.target as HTMLElement);
-            setTimeout(() => entry.target.classList.add('visible'), idx * 80);
+        // Stagger only within the batch that entered together (e.g. several
+        // cards on a tall desktop screen). On mobile each card enters alone,
+        // so it must appear immediately instead of waiting for its DOM index.
+        entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => items.indexOf(a.target as HTMLElement) - items.indexOf(b.target as HTMLElement))
+          .forEach((entry, i) => {
+            setTimeout(() => entry.target.classList.add('visible'), i * 80);
             observer.unobserve(entry.target);
-          }
-        });
+          });
       },
       { threshold: 0.05, rootMargin: '0px 0px -30px 0px' }
     );

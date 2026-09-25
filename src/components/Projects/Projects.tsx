@@ -20,14 +20,15 @@ const Projects: React.FC = () => {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            // Use DOM index for correct stagger regardless of callback batch
-            const idx = cards.indexOf(entry.target as HTMLElement);
-            setTimeout(() => entry.target.classList.add('visible'), idx * 120);
+        // Stagger only within the batch that entered together (a grid row on
+        // desktop). On mobile each card enters alone and must appear at once.
+        entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => cards.indexOf(a.target as HTMLElement) - cards.indexOf(b.target as HTMLElement))
+          .forEach((entry, i) => {
+            setTimeout(() => entry.target.classList.add('visible'), i * 120);
             observer.unobserve(entry.target);
-          }
-        });
+          });
       },
       { threshold: 0.05, rootMargin: '0px 0px -40px 0px' }
     );
