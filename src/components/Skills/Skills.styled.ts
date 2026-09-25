@@ -107,6 +107,7 @@ export const SkillsWrapper = styled.section`
 
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
     padding: 70px 0;
+    .reveal { transition-duration: 0.3s; }
     .container { padding: 0 24px; }
   }
 `;

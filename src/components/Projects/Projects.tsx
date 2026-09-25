@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ProjectsWrapper } from './Projects.styled';
-import { useScrollReveal } from '@hooks/useScrollReveal';
+import { useScrollReveal, getRevealOptions, prefersReducedMotion } from '@hooks/useScrollReveal';
 import { useLanguage } from '@hooks/useLanguage';
 import { t } from '../../translations';
 
@@ -21,6 +21,11 @@ const Projects: React.FC = () => {
     const cards = Array.from(grid.querySelectorAll<HTMLElement>('.pc'));
     cards.forEach(el => el.classList.remove('visible'));
 
+    if (prefersReducedMotion() || typeof IntersectionObserver === 'undefined') {
+      cards.forEach(el => el.classList.add('visible'));
+      return;
+    }
+
     const observer = new IntersectionObserver(
       (entries) => {
         // Stagger only within the batch that entered together (a grid row on
@@ -33,7 +38,7 @@ const Projects: React.FC = () => {
             observer.unobserve(entry.target);
           });
       },
-      { threshold: 0.05, rootMargin: '0px 0px -40px 0px' }
+      getRevealOptions()
     );
 
     cards.forEach((el) => observer.observe(el));

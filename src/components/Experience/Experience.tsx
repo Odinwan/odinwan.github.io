@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ExperienceWrapper } from './Experience.styled';
-import { useScrollReveal } from '@hooks/useScrollReveal';
+import { useScrollReveal, getRevealOptions, prefersReducedMotion } from '@hooks/useScrollReveal';
 import { useLanguage } from '@hooks/useLanguage';
 import { t } from '../../translations';
 
@@ -23,6 +23,11 @@ const Experience: React.FC = () => {
     const items = Array.from(timeline.querySelectorAll<HTMLElement>('.ti'));
     items.forEach(el => el.classList.remove('visible'));
 
+    if (prefersReducedMotion() || typeof IntersectionObserver === 'undefined') {
+      items.forEach(el => el.classList.add('visible'));
+      return;
+    }
+
     const observer = new IntersectionObserver(
       (entries) => {
         // Stagger only within the batch that entered together (e.g. several
@@ -36,7 +41,7 @@ const Experience: React.FC = () => {
             observer.unobserve(entry.target);
           });
       },
-      { threshold: 0.05, rootMargin: '0px 0px -30px 0px' }
+      getRevealOptions()
     );
 
     items.forEach((el) => observer.observe(el));

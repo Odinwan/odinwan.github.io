@@ -191,6 +191,7 @@ export const ExperienceWrapper = styled.section`
 
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
     padding: 70px 0;
+    .reveal, .ti { transition-duration: 0.3s; }
     .container { padding: 0 24px; }
 
     .card .list:not(.open) li:nth-child(n + ${COLLAPSED_ITEMS + 1}) { display: none; }
