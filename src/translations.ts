@@ -138,6 +138,8 @@ export const t = {
       label: 'Notable Work',
       title: 'Interesting Projects',
       sub: 'Selected technical challenges with measurable real-world impact',
+      more: 'Read more',
+      less: 'Show less',
       list: [
         {
           icon: '💰',
@@ -336,6 +338,8 @@ export const t = {
       label: 'Избранные работы',
       title: 'Проекты',
       sub: 'Интересные технические задачи с реальным измеримым результатом',
+      more: 'Читать дальше',
+      less: 'Свернуть',
       list: [
         {
           icon: '💰',

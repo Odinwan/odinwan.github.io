@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ProjectsWrapper } from './Projects.styled';
 import { useScrollReveal } from '@hooks/useScrollReveal';
 import { useLanguage } from '@hooks/useLanguage';
@@ -9,6 +9,9 @@ const Projects: React.FC = () => {
   const gridRef = useRef<HTMLDivElement>(null);
   const { lang } = useLanguage();
   const tr = t[lang].projects;
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  const toggle = (key: string) => setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
 
   useEffect(() => {
     const grid = gridRef.current;
@@ -47,16 +50,22 @@ const Projects: React.FC = () => {
         </div>
 
         <div className="grid" ref={gridRef}>
-          {tr.list.map((p) => (
-            <div className="pc" key={p.title}>
-              <div className="icon">{p.icon}</div>
-              <h3 className="title">{p.title}</h3>
-              <p className="desc">{p.desc}</p>
-              <div className="tech">
-                {p.tech.map((tag) => <span key={tag} className="tag">{tag}</span>)}
+          {tr.list.map((p) => {
+            const isOpen = !!expanded[p.title];
+            return (
+              <div className="pc" key={p.title}>
+                <div className="icon">{p.icon}</div>
+                <h3 className="title">{p.title}</h3>
+                <p className={`desc ${isOpen ? 'open' : ''}`}>{p.desc}</p>
+                <button type="button" className="more" onClick={() => toggle(p.title)} aria-expanded={isOpen}>
+                  {isOpen ? tr.less : tr.more}
+                </button>
+                <div className="tech">
+                  {p.tech.map((tag) => <span key={tag} className="tag">{tag}</span>)}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </ProjectsWrapper>

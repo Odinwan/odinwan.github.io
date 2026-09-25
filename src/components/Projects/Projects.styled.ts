@@ -125,8 +125,36 @@ export const ProjectsWrapper = styled.section`
     }
   }
 
+  .more {
+    display: none;
+    margin: -8px 0 18px;
+    padding: 6px 12px;
+    border: 1px solid ${({ theme }) => theme.colors.border};
+    border-radius: 8px;
+    background: transparent;
+    color: ${({ theme }) => theme.colors.cyan};
+    font-family: ${({ theme }) => theme.fonts.mono};
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color 0.3s ease, background 0.3s ease;
+
+    &:hover {
+      border-color: ${({ theme }) => theme.colors.borderHover};
+      background: ${({ theme }) => theme.colors.cyanDim};
+    }
+  }
+
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
     padding: 70px 0;
     .container { padding: 0 24px; }
+
+    /* Clamp the description to three lines until the card is expanded. */
+    .pc .desc:not(.open) {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+      overflow: hidden;
+    }
+    .pc .more { display: inline-flex; }
   }
 `;
