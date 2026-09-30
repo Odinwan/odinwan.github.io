@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { t, Lang } from '../../translations';
 import { skillGroups } from '../../data/skills';
+import { SheetData, useOpenSheet } from './sheet';
 
 type Tr = (typeof t)[Lang];
 
@@ -37,13 +38,16 @@ export const CV_URL = '/Vladislav_Cupnii_Senior_Fullstack_CV.pdf';
 /* ---------- shared building blocks ---------- */
 
 /**
- * Bottom caption, like the text under a reel. Long captions collapse to a few
- * lines; "more" opens them as a sheet over the reel with its own scroll.
+ * Bottom caption, like the text under a reel. When the text doesn't fit the
+ * screen it fades out and a "Read in full" button opens it in the sheet.
  */
-export const Caption: React.FC<React.PropsWithChildren<{ tr: Tr; className?: string }>> = ({ tr, className = '', children }) => {
+export const Caption: React.FC<React.PropsWithChildren<{
+  tr: Tr;
+  sheet: Omit<SheetData, 'body'> & { body?: React.ReactNode };
+}>> = ({ tr, sheet, children }) => {
   const bodyRef = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
   const [overflows, setOverflows] = useState(false);
+  const openSheet = useOpenSheet();
 
   useLayoutEffect(() => {
     const el = bodyRef.current;
@@ -56,17 +60,21 @@ export const Caption: React.FC<React.PropsWithChildren<{ tr: Tr; className?: str
   }, [children]);
 
   return (
-    <div className={`caption ${open ? 'open' : ''} ${className}`}>
+    <div className="caption">
       <div className="handle">
         <img src="/photo.jpg" alt="" />
         <span>{tr.intro.handle}</span>
       </div>
-      <div className={`caption-body ${open ? '' : 'clamped'} ${overflows && !open ? 'fade' : ''}`} ref={bodyRef}>
+      <div className={`caption-body ${overflows ? 'fade' : ''}`} ref={bodyRef}>
         {children}
       </div>
-      {(overflows || open) && (
-        <button type="button" className="caption-toggle" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-          {open ? tr.ui.less : `… ${tr.ui.more}`}
+      {overflows && (
+        <button
+          type="button"
+          className="read-all"
+          onClick={() => openSheet({ ...sheet, body: sheet.body ?? children })}
+        >
+          {tr.ui.readAll} <span aria-hidden="true">→</span>
         </button>
       )}
     </div>
@@ -93,7 +101,7 @@ export const buildReels = (lang: Lang): Reel[] => {
           <h1 className="giant anim">{tr.intro.name}</h1>
           <p className="subtitle anim">{tr.intro.role}</p>
         </div>
-        <Caption tr={tr}>
+        <Caption tr={tr} sheet={{ title: tr.intro.name, subtitle: tr.intro.role }}>
           <p>{tr.intro.caption}</p>
           <p className="hashtags">{tr.intro.tags.join(' ')}</p>
         </Caption>
@@ -123,6 +131,24 @@ export const buildReels = (lang: Lang): Reel[] => {
     ),
   });
 
+  const aboutFacts = (
+    <dl className="facts">
+      {tr.about.facts.map((f) => (
+        <div key={f.lbl}>
+          <dt>{f.lbl}</dt>
+          <dd>{f.val}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+  const aboutFull = (
+    <>
+      <p>{tr.about.p1}</p>
+      <p>{tr.about.p2}</p>
+      {aboutFacts}
+    </>
+  );
+
   reels.push({
     id: 'about',
     chapter: 'about',
@@ -133,16 +159,9 @@ export const buildReels = (lang: Lang): Reel[] => {
           <h2 className="giant anim">{tr.about.title}</h2>
           <p className="lead anim">{tr.about.p1}</p>
         </div>
-        <Caption tr={tr}>
+        <Caption tr={tr} sheet={{ title: tr.about.title, body: aboutFull }}>
           <p>{tr.about.p2}</p>
-          <dl className="facts">
-            {tr.about.facts.map((f) => (
-              <div key={f.lbl}>
-                <dt>{f.lbl}</dt>
-                <dd>{f.val}</dd>
-              </div>
-            ))}
-          </dl>
+          {aboutFacts}
         </Caption>
       </>
     ),
@@ -172,7 +191,21 @@ export const buildReels = (lang: Lang): Reel[] => {
             <p className="subtitle anim">{job.role}</p>
             {'note' in job && <p className="note anim">{job.note}</p>}
           </div>
-          <Caption tr={tr}>
+          <Caption
+            tr={tr}
+            sheet={{
+              title: job.company,
+              subtitle: `${job.role} · ${job.period}`,
+              body: (
+                <>
+                  {'note' in job && <p className="note">{job.note}</p>}
+                  <ul className="bullets">
+                    {job.items.map((item) => <li key={item}>{item}</li>)}
+                  </ul>
+                </>
+              ),
+            }}
+          >
             <ul className="bullets">
               {job.items.map((item) => <li key={item}>{item}</li>)}
             </ul>
@@ -207,6 +240,7 @@ export const buildReels = (lang: Lang): Reel[] => {
 
   tr.projects.list.forEach((p, i) => {
     const num = String(i + 1).padStart(2, '0');
+    const tags = p.tech.map((x) => `#${x.replace(/[\s.]/g, '').toLowerCase()}`).join(' ');
     reels.push({
       id: `project-${i}`,
       chapter: 'projects',
@@ -228,9 +262,31 @@ export const buildReels = (lang: Lang): Reel[] => {
               </dl>
             )}
           </div>
-          <Caption tr={tr}>
+          <Caption
+            tr={tr}
+            sheet={{
+              title: p.title,
+              subtitle: `${tr.projects.label} ${num} · ${p.kicker}`,
+              body: (
+                <>
+                  {'facts' in p && (
+                    <dl className="stats compact">
+                      {p.facts.map((f) => (
+                        <div key={f.lbl}>
+                          <dt>{f.val}</dt>
+                          <dd>{f.lbl}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                  <p>{p.desc}</p>
+                  <p className="hashtags">{tags}</p>
+                </>
+              ),
+            }}
+          >
             <p>{p.desc}</p>
-            <p className="hashtags">{p.tech.map((x) => `#${x.replace(/[\s.]/g, '').toLowerCase()}`).join(' ')}</p>
+            <p className="hashtags">{tags}</p>
           </Caption>
         </>
       ),
