@@ -12,10 +12,15 @@ const getInitial = (): Lang => {
 };
 
 let current: Lang = getInitial();
+
+// Keeps hyphenation and screen readers in sync with the chosen language.
+const syncDocumentLang = () => { document.documentElement.lang = current; };
+syncDocumentLang();
 const listeners = new Set<Listener>();
 
 export const setLang = (lang: Lang): void => {
   current = lang;
+  syncDocumentLang();
   try { localStorage.setItem('portfolio-lang', lang); } catch { /* noop */ }
   listeners.forEach(fn => fn());
 };
