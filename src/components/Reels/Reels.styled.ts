@@ -42,8 +42,10 @@ export const Layout = styled.div`
     width: 100%;
     background: var(--bg);
     color: var(--fg);
-    transition: background 0.3s ease, color 0.3s ease;
   }
+
+  /* Overlay controls: colours are set per element from the reel beneath it (see Reels.tsx). */
+  [data-probe] { color: var(--fg); }
 
   .progress {
     position: absolute;
@@ -74,8 +76,7 @@ export const Layout = styled.div`
     padding: 14px 96px 12px 20px;
     overflow-x: auto;
     scrollbar-width: none;
-    background: linear-gradient(to bottom, var(--bg) 55%, transparent);
-    transition: background 0.3s ease;
+    mask-image: linear-gradient(to right, #000 calc(100% - 120px), transparent calc(100% - 96px));
     &::-webkit-scrollbar { display: none; }
 
     button {
@@ -153,7 +154,8 @@ export const Layout = styled.div`
     min-height: 0;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    /* "safe" keeps the top visible (and scrollable) when content is taller than the screen. */
+    justify-content: safe center;
     align-items: flex-start;
     gap: 14px;
     padding-right: var(--rail);
@@ -163,7 +165,7 @@ export const Layout = styled.div`
     &::-webkit-scrollbar { display: none; }
   }
 
-  .stage-end { justify-content: flex-end; }
+  .stage-end { justify-content: safe flex-end; }
 
   .giant {
     font-family: ${({ theme }) => theme.fonts.display};
@@ -318,7 +320,6 @@ export const Layout = styled.div`
     font-weight: 700;
     text-decoration: none;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-    transition: background 0.3s ease, color 0.3s ease;
   }
 
   .swipe {
@@ -339,7 +340,7 @@ export const Layout = styled.div`
    * is clipped (with a "more" sheet) only when it truly doesn't fit.
    */
   .reel:not(.reel-intro):has(.caption) {
-    justify-content: center;
+    justify-content: safe center;
 
     .stage { flex: 0 0 auto; justify-content: flex-start; }
   }
@@ -355,9 +356,8 @@ export const Layout = styled.div`
     padding-right: var(--rail);
   }
 
-  .reel-intro .stage { flex: 1 1 auto; justify-content: flex-end; }
+  .reel-intro .stage { flex: 1 1 auto; justify-content: safe flex-end; }
   .reel-intro .caption { flex: 0 0 auto; }
-  .reel-intro .caption-body.clamped { max-height: 9em; }
 
   .handle {
     display: flex;
@@ -384,38 +384,31 @@ export const Layout = styled.div`
 
     p + p { margin-top: 6px; }
 
-    &.clamped { min-height: 3em; overflow: hidden; }
-    &.fade { mask-image: linear-gradient(to bottom, #000 55%, transparent); }
+    min-height: 3em;
+    overflow: hidden;
+
+    &.fade { mask-image: linear-gradient(to bottom, #000 50%, transparent); }
   }
 
-  .caption-toggle {
+  .read-all {
     align-self: flex-start;
-    margin-top: 2px;
-    padding: 4px 0;
-    background: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    margin-top: 8px;
+    padding: 8px 16px;
     border: 0;
+    border-radius: 99px;
+    background: var(--fg);
+    color: var(--bg);
     font-size: 15px;
     font-weight: 700;
+    text-shadow: none;
     cursor: pointer;
-  }
+    transition: transform 0.15s ease;
 
-  /* Expanded caption becomes a sheet over the reel. */
-  .caption.open {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    max-height: 75%;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    margin: 0;
-    padding: 22px 20px 56px;
-    padding-right: calc(var(--rail) + 20px);
-    border-radius: 22px 22px 0 0;
-    background: var(--bg);
-    box-shadow: 0 -24px 48px rgba(0, 0, 0, 0.28);
-    user-select: text;
-    display: block;
+    &:active { transform: scale(0.96); }
   }
 
   .hashtags { font-weight: 700; }
@@ -581,6 +574,124 @@ export const Layout = styled.div`
     .val { font-size: 16px; font-weight: 600; overflow-wrap: anywhere; text-align: right; }
   }
 
+  /* ---------- details sheet ---------- */
+  .feed.locked { overflow: hidden; }
+
+  .sheet-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    overflow: hidden;
+    border-radius: inherit;
+    pointer-events: none;
+    visibility: hidden;
+    transition: visibility 0s 0.3s;
+
+    &.open { pointer-events: auto; visibility: visible; transition-delay: 0s; }
+  }
+
+  .sheet-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  .sheet-layer.open .sheet-backdrop { opacity: 1; }
+
+  .sheet {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    max-height: 88%;
+    border-radius: 22px 22px 0 0;
+    background: #fbf8f2;
+    color: #17140f;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.3);
+    transform: translateY(105%);
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .sheet-layer.open .sheet { transform: translateY(0); }
+
+  .sheet-head {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 22px 16px 14px 20px;
+    border-bottom: 1px solid rgba(23, 20, 15, 0.1);
+    touch-action: none;
+  }
+
+  .grabber {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    width: 40px;
+    height: 5px;
+    margin-left: -20px;
+    border-radius: 3px;
+    background: rgba(23, 20, 15, 0.2);
+  }
+
+  .sheet-titles {
+    flex: 1;
+    min-width: 0;
+
+    strong {
+      display: block;
+      font-family: ${({ theme }) => theme.fonts.display};
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+    }
+
+    span {
+      display: block;
+      margin-top: 4px;
+      font-size: 14px;
+      color: rgba(23, 20, 15, 0.65);
+    }
+  }
+
+  .sheet-close {
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    margin-top: -6px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(23, 20, 15, 0.08);
+    color: #17140f;
+    cursor: pointer;
+
+    &:hover { background: rgba(23, 20, 15, 0.14); }
+  }
+
+  .sheet-body {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 18px 20px calc(28px + env(safe-area-inset-bottom));
+    font-size: 16.5px;
+    line-height: 1.6;
+    user-select: text;
+
+    p + p, p + ul, ul + p, .stats + p { margin-top: 12px; }
+    .note { margin-bottom: 12px; opacity: 1; color: rgba(23, 20, 15, 0.7); }
+    .bullets li { margin-bottom: 12px; }
+    .bullets li::before { background: #ff5b36; }
+    .facts { margin-top: 16px; }
+    .stats.compact { margin: 0 0 8px; }
+  }
+
   /* ---------- sound line ---------- */
   .sound {
     position: absolute;
@@ -688,7 +799,7 @@ export const Layout = styled.div`
     border-radius: 50%;
     background: ${tint(14)};
     backdrop-filter: blur(6px);
-    transition: transform 0.15s ease, background 0.2s ease;
+    transition: transform 0.15s ease;
 
     &.lang {
       font-family: ${({ theme }) => theme.fonts.display};
@@ -741,6 +852,10 @@ export const Layout = styled.div`
     .caption-body { font-size: 15px; }
     .stats { gap: 16px 14px; dt { font-size: clamp(40px, 14cqi, 80px); } }
     .stack { gap: 7px; }
+    .stage .stats.compact { display: none; }
+    .reel-intro .hashtags { display: none; }
+    .note { font-size: 13px; }
+    .giant { font-size: clamp(30px, 11cqi, 60px); }
     .pill { font-size: 12.5px; padding: 1px 8px; }
     .links a { padding: 8px 0; }
     .btn { padding: 11px 18px; font-size: 15px; }
@@ -748,6 +863,16 @@ export const Layout = styled.div`
     .ico { width: 42px; height: 42px; }
     .avatar img { width: 42px; height: 42px; }
     .rail .counter { display: none; }
+  }
+
+  /* Tiny phones (first-gen iPhone SE): the intro keeps only name, role and CV. */
+  @media (max-height: 600px) {
+    .reel-intro .caption { display: none; }
+  }
+
+  @media (max-width: 360px) {
+    .links a { flex-direction: column; align-items: flex-start; gap: 0; }
+    .links .val { text-align: left; }
   }
 
   /* ---------- desktop: TikTok-web style ---------- */
@@ -849,6 +974,7 @@ export const Layout = styled.div`
       color: ${({ theme }) => theme.colors.text};
     }
 
+    .rail [data-probe] { color: ${({ theme }) => theme.colors.text}; }
     .ico { background: rgba(255, 255, 255, 0.08); }
     .act:hover .ico { background: rgba(255, 255, 255, 0.16); }
 
