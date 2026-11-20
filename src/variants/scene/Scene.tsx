@@ -204,7 +204,7 @@ const Scene: React.FC = () => {
         {atTable && bubble && (() => {
           const lines = QUIPS[bubble.id][lang];
           // Keep the bubble on screen; the tail still points at the prop.
-          const half = 150;
+          const half = Math.min(150, window.innerWidth / 2 - 12);
           const w = window.innerWidth;
           const x = Math.min(Math.max(bubble.x, half + 8), Math.max(half + 8, w - half - 8));
           const y = Math.max(bubble.y, 120);

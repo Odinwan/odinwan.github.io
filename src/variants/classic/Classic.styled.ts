@@ -19,6 +19,7 @@ export const PrintReset = createGlobalStyle`
 
   @media print {
     html, body, #root {
+      position: static !important;
       height: auto !important;
       min-height: 0 !important;
       overflow: visible !important;
