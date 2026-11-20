@@ -2,6 +2,7 @@ import React, { useLayoutEffect, useRef, useState } from 'react';
 import { t, Lang } from '../../translations';
 import { skillGroups } from '../../data/skills';
 import { SheetData, useOpenSheet } from './sheet';
+import { EMAIL, CV_URL, CV_AI_FIRST_URL, CV_FULLSTACK_URL } from '../../data/links';
 
 type Tr = (typeof t)[Lang];
 
@@ -32,10 +33,7 @@ const P = {
 
 const rotation: Palette[] = [P.cobalt, P.lime, P.pink, P.forest, P.mustard, P.cream, P.tomato];
 
-const EMAIL = 'vlad.kupnyy@gmail.com';
-export const CV_URL = '/cv/Vladislav_Cupnii_Senior_Frontend_CV.pdf';
-export const CV_AI_FIRST_URL = '/cv/Vladislav_Cupnii_AI_First_Frontend_CV.pdf';
-export const CV_FULLSTACK_URL = '/cv/Vladislav_Cupnii_Fullstack_CV.pdf';
+export { CV_URL, CV_AI_FIRST_URL, CV_FULLSTACK_URL };
 
 /** Small secondary links to the alternative CV versions, shown under the main download button. */
 export function CvAlt({ tr, className = '' }: { tr: { ui: { otherCv: string; cvAiFirst: string; cvFullstack: string } }; className?: string }) {
