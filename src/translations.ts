@@ -89,13 +89,13 @@ export const t = {
           ],
         },
         {
-          role: 'Technical Lead / Fullstack Developer',
+          role: 'Technical Lead',
           company: 'Unicorn',
           note: 'Contract project alongside full-time employment · Investment platform',
           period: 'Aug 2025 — Aug 2026',
           current: false,
           items: [
-            'Built and launched the platform end to end: React/TypeScript customer portal and admin app, plus a Node.js/Express backend on Firebase/Firestore',
+            'Led the project and built the platform end to end as a hands-on lead: React/TypeScript customer portal and admin app, plus a Node.js/Express backend on Firebase/Firestore',
             'Implemented purchases, installment schedules, balance management, transfers, withdrawals, dividend calculations and payment API/webhook integrations',
             'Developed authentication, document verification workflows and admin tools for users, transaction requests, pricing and promotions',
             'Implemented scheduled installment maintenance and notification workflows; delivered a customer interface localized into 10 languages',
@@ -323,13 +323,13 @@ export const t = {
           ],
         },
         {
-          role: 'Technical Lead / Fullstack Developer',
+          role: 'Technical Lead',
           company: 'Unicorn',
           note: 'Контрактный проект параллельно с основной работой · Инвестиционная платформа',
           period: 'Авг 2025 — Авг 2026',
           current: false,
           items: [
-            'Построил и запустил платформу с нуля: клиентский портал и админку на React/TypeScript, бэкенд на Node.js/Express с Firebase/Firestore',
+            'Руководил проектом и сам построил платформу с нуля: клиентский портал и админку на React/TypeScript, бэкенд на Node.js/Express с Firebase/Firestore',
             'Реализовал покупки, графики рассрочки, управление балансом, переводы, выводы, расчёт дивидендов и интеграции с платёжными API и вебхуками',
             'Разработал аутентификацию, верификацию документов и инструменты администратора для пользователей, заявок на транзакции, цен и промоакций',
             'Реализовал плановое обслуживание рассрочек и уведомления; клиентский интерфейс локализован на 10 языков',
