@@ -33,7 +33,21 @@ const P = {
 const rotation: Palette[] = [P.cobalt, P.lime, P.pink, P.forest, P.mustard, P.cream, P.tomato];
 
 const EMAIL = 'vlad.kupnyy@gmail.com';
-export const CV_URL = '/Vladislav_Cupnii_Senior_Fullstack_CV.pdf';
+export const CV_URL = '/cv/Vladislav_Cupnii_Senior_Frontend_CV.pdf';
+export const CV_AI_FIRST_URL = '/cv/Vladislav_Cupnii_AI_First_Frontend_CV.pdf';
+export const CV_FULLSTACK_URL = '/cv/Vladislav_Cupnii_Fullstack_CV.pdf';
+
+/** Small secondary links to the alternative CV versions, shown under the main download button. */
+export function CvAlt({ tr, className = '' }: { tr: { ui: { otherCv: string; cvAiFirst: string; cvFullstack: string } }; className?: string }) {
+  return (
+    <p className={`cv-alt ${className}`.trim()}>
+      {tr.ui.otherCv}{' '}
+      <a href={CV_AI_FIRST_URL} download>{tr.ui.cvAiFirst}</a>
+      {' · '}
+      <a href={CV_FULLSTACK_URL} download>{tr.ui.cvFullstack}</a>
+    </p>
+  );
+}
 
 /* ---------- shared building blocks ---------- */
 
@@ -106,6 +120,7 @@ export const buildReels = (lang: Lang): Reel[] => {
           <p className="hashtags">{tr.intro.tags.join(' ')}</p>
         </Caption>
         <a className="cv-big anim" href={CV_URL} download>↓ {tr.ui.downloadCv}</a>
+        <CvAlt tr={tr} className="anim" />
         <div className="swipe" aria-hidden="true">↑ {tr.ui.swipe}</div>
       </>
     ),
@@ -329,6 +344,7 @@ export const buildReels = (lang: Lang): Reel[] => {
           <a className="btn solid" href={`mailto:${EMAIL}`}>{tr.contact.cta}</a>
           <a className="btn" href={CV_URL} download>{tr.contact.cv}</a>
         </div>
+        <CvAlt tr={tr} className="anim" />
         <ul className="links anim">
           {tr.contact.links.map((l) => (
             <li key={l.href}>
