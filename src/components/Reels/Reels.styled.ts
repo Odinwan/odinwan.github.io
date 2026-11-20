@@ -872,7 +872,8 @@ export const Layout = styled.div`
     .pill { font-size: 12.5px; padding: 1px 8px; }
     .links a { padding: 8px 0; }
     .btn { padding: 11px 18px; font-size: 15px; }
-    .rail { gap: 9px; }
+    .rail { gap: 7px; }
+    .lbl { font-size: 10px; }
     .ico { width: 42px; height: 42px; }
     .avatar img { width: 42px; height: 42px; }
     .rail .counter { display: none; }
@@ -952,6 +953,16 @@ export const Layout = styled.div`
     .cv-pill { display: none; }
     .act.cv .ico { background: #d4f36b; color: #11140a; }
     .act.cv:hover .ico { background: #e0f78f; }
+
+    /* The sidebar already lists every design, so the rail shortcut is phone-only. */
+    .act.design { display: none; }
+
+    .designs {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid ${({ theme }) => theme.colors.line};
+      button { padding: 9px 14px; border-radius: 12px; font-size: 14px; }
+    }
 
     .keys {
       margin-top: 20px;
