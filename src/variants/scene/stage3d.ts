@@ -1861,9 +1861,10 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     const aspect = w / h;
     camera.aspect = aspect;
     if (aspect < 0.8) {
-      camera.fov = 64;
-      camHome.set(0, 0.5, 0.86);
-      lookHome.set(0, 0.17, -0.4);
+      // Portrait: stand further back so the whole table fits between the edges.
+      camera.fov = 66;
+      camHome.set(0, 0.62, 1.14);
+      lookHome.set(0, 0.2, -0.4);
     } else {
       camera.fov = aspect < 1.3 ? 58 : 52;
       camHome.set(0, 0.36, 0.66);
