@@ -531,6 +531,12 @@ export const Root = styled.div`
   &.phase-closing .room, &.phase-closing .desk { transition-duration: 0.6s; }
 
   @media (max-width: 700px) {
+    .bar { flex-wrap: wrap; row-gap: 2px; padding: 8px 10px; }
+    .variants { order: 2; flex: 1 0 100%; }
+    .lang { order: 1; margin-left: auto; }
+    .hint span { font-size: 13px; }
+    .bubble { font-size: 14px; max-width: min(240px, calc(100% - 24px)); }
+
     --tilt: 52deg;
     --bw: clamp(190px, 56vw, 250px);
 
