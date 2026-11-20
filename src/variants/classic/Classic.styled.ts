@@ -48,8 +48,7 @@ export const Root = styled.div`
   --gap: 2rem;
 
   position: relative;
-  height: 100vh;
-  height: 100dvh;
+  height: var(--app-h, 100dvh);
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -650,12 +649,15 @@ export const Root = styled.div`
     .alt a { margin-left: 0.7em; }
   }
 
+  .toolbar-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  @media (max-width: 560px) { .toolbar-name { display: none; } }
+
   section:focus, section:focus-visible { outline: none; }
 
   /* ───────── back to top ───────── */
 
   .top {
-    position: fixed;
+    position: absolute;
     right: 24px;
     bottom: 24px;
     z-index: 9;

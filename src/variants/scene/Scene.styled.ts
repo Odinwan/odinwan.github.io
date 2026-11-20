@@ -45,6 +45,33 @@ const pop = keyframes`
   100% { opacity: 0; transform: translate(-50%, calc(-100% - 24px)) scale(0.96); }
 `;
 
+const bob = keyframes`
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-12px) rotate(3deg); }
+`;
+
+const blink = keyframes`
+  0%, 60%, 100% { opacity: 0.2; }
+  30% { opacity: 1; }
+`;
+
+const slide = keyframes`
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(260%); }
+`;
+
+const flash = keyframes`
+  0%, 45% { opacity: 0; }
+  51% { opacity: 0.55; }
+  62% { opacity: 0.18; }
+  100% { opacity: 0; }
+`;
+
+const tagIn = keyframes`
+  from { opacity: 0; transform: translate(-50%, calc(-100% - 4px)) scale(0.9); }
+  to { opacity: 1; transform: translate(-50%, calc(-100% - 12px)) scale(1); }
+`;
+
 const fadeIn = keyframes`
   from { opacity: 0; transform: scale(0.96); }
   to { opacity: 1; transform: none; }
@@ -62,7 +89,7 @@ export const Root = styled.div`
   --gold: #e9b44c;
 
   position: relative;
-  height: 100dvh;
+  height: var(--app-h, 100dvh);
   overflow: hidden;
   background: #120c14;
   color: #f6ead0;
@@ -78,7 +105,7 @@ export const Root = styled.div`
     opacity: 0;
     transition: opacity 0.8s ease;
   }
-  &.mode-3d .gl { opacity: 1; }
+  &.mode-3d.shown .gl { opacity: 1; }
   &.mode-flat .gl { display: none; }
   /* Dims the room behind the open book. A plain overlay: filters on a WebGL canvas stutter. */
   .dim {
@@ -90,6 +117,120 @@ export const Root = styled.div`
     pointer-events: none;
   }
   &.phase-reading .dim { opacity: 1; }
+
+  /* The moment the book bursts open. Timed to the 3.6 s opening shot in the 3D stage. */
+  .flash {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(60% 55% at 50% 60%, #fffbe6 0%, rgba(255, 226, 150, 0.85) 35%, rgba(255, 190, 90, 0) 75%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  &.mode-3d.phase-opening .flash { animation: ${flash} 3.6s linear both; }
+  &.mode-3d.phase-opening .vignette { background: radial-gradient(90% 75% at 50% 60%, transparent 30%, rgba(4, 2, 8, 0.9) 100%); }
+  .vignette { transition: background 1.2s ease; }
+
+  /* Shown while the 3D room loads. */
+  .loader {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: radial-gradient(60% 50% at 50% 45%, #3a1f2c, #120c14 75%);
+    color: #ffe2a1;
+
+    p { margin: 0; font: 400 clamp(20px, 5vw, 28px)/1.2 var(--fairy, 'Lora'), 'Lora', Georgia, serif; letter-spacing: 0.03em; }
+  }
+  .loader-hero { width: min(42vw, 170px); height: auto; animation: ${bob} 1.5s ease-in-out infinite; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.5)); }
+  .dots i { font-style: normal; animation: ${blink} 1.2s infinite; }
+  .dots i:nth-child(2) { animation-delay: 0.2s; }
+  .dots i:nth-child(3) { animation-delay: 0.4s; }
+  .loader-bar {
+    width: min(60vw, 240px);
+    height: 6px;
+    border: 1px solid rgba(233, 180, 76, 0.6);
+    border-radius: 99px;
+    overflow: hidden;
+    i { display: block; width: 40%; height: 100%; border-radius: 99px; background: var(--gold); animation: ${slide} 1.3s ease-in-out infinite; }
+  }
+
+  /* A small plaque that says what you can do in the scene. */
+  .help {
+    position: absolute;
+    left: 14px;
+    bottom: calc(18px + env(safe-area-inset-bottom));
+    z-index: 3;
+    width: min(300px, calc(100% - 28px));
+    padding: 12px 14px 12px 16px;
+    border: 2px solid #2a1810;
+    border-radius: 14px;
+    background: linear-gradient(160deg, #fff6dc, #ecd9a8);
+    color: #2a1810;
+    box-shadow: 0 5px 0 rgba(42, 24, 16, 0.4), 0 14px 26px rgba(0, 0, 0, 0.4);
+
+    h2 { margin: 0 26px 6px 0; font: 400 15px/1.2 var(--fairy, 'Lora'), 'Lora', Georgia, serif; }
+    ul { margin: 0; padding: 0; list-style: none; }
+    li {
+      position: relative;
+      padding-left: 16px;
+      font: 500 13px/1.4 'Lora', Georgia, serif;
+    }
+    li + li { margin-top: 4px; }
+    li::before { content: ''; position: absolute; left: 2px; top: 0.5em; width: 7px; height: 7px; border-radius: 50%; background: #d8402a; }
+  }
+
+  .help-x {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 26px;
+    height: 26px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(42, 24, 16, 0.1);
+    color: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    &:hover { background: rgba(42, 24, 16, 0.22); }
+  }
+
+  .help-open {
+    position: absolute;
+    left: 14px;
+    bottom: calc(18px + env(safe-area-inset-bottom));
+    z-index: 3;
+    width: 44px;
+    height: 44px;
+    border: 2px solid #2a1810;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2a1810;
+    font: 700 20px 'Lora', Georgia, serif;
+    box-shadow: 0 4px 0 rgba(42, 24, 16, 0.5), 0 10px 18px rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+    &:hover { background: #f7d98a; }
+  }
+
+  /* Name of the thing under the pointer — the sign that it can be clicked. */
+  .tag {
+    position: absolute;
+    z-index: 4;
+    padding: 5px 11px;
+    border: 1.5px solid #2a1810;
+    border-radius: 99px;
+    background: var(--gold);
+    color: #2a1810;
+    font: 700 13px/1.2 'Lora', Georgia, serif;
+    white-space: nowrap;
+    box-shadow: 0 3px 0 rgba(42, 24, 16, 0.45);
+    transform: translate(-50%, calc(-100% - 12px));
+    pointer-events: none;
+    animation: ${tagIn} 0.16s ease-out both;
+  }
 
   /* What the props say when you poke them. */
   .bubble {
@@ -140,7 +281,7 @@ export const Root = styled.div`
     opacity: 0.6;
     pointer-events: none;
   }
-  &.mode-flat .paper, &.mode-loading .paper { display: none; }
+  &.mode-flat .paper, &:not(.shown) .paper { display: none; }
 
   .hero-src { position: absolute; width: 0; height: 0; overflow: hidden; visibility: hidden; }
 
@@ -472,8 +613,12 @@ export const Root = styled.div`
 
   .variants { flex: 1 1 0; min-width: 0; }
 
+  .lang.sound { margin-left: auto; font-size: 16px; line-height: 1; s { opacity: 0.45; } }
+  .lang + .lang { margin-left: 0; }
+
   .lang {
     flex-shrink: 0;
+    margin-left: auto;
     padding: 7px 12px;
     border: 1px solid rgba(246, 234, 208, 0.3);
     border-radius: 99px;
@@ -512,6 +657,14 @@ export const Root = styled.div`
     }
 
     span { font-size: 14px; font-style: italic; opacity: 0.8; text-shadow: 0 1px 6px #000; }
+
+    .second {
+      padding: 9px 18px;
+      border-color: rgba(233, 180, 76, 0.7);
+      background: rgba(30, 16, 14, 0.7);
+      font: 600 14px 'Lora', Georgia, serif;
+      letter-spacing: 0;
+    }
   }
 
 
@@ -533,8 +686,10 @@ export const Root = styled.div`
   @media (max-width: 700px) {
     .bar { flex-wrap: wrap; row-gap: 2px; padding: 8px 10px; }
     .variants { order: 2; flex: 1 0 100%; }
-    .lang { order: 1; margin-left: auto; }
-    .hint span { font-size: 13px; }
+    .lang { order: 1; }
+    .hint { bottom: calc(18px + env(safe-area-inset-bottom)); }
+    /* On phones the plaque sits above the button so it never hides the book. */
+    .help { left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom)); }
     .bubble { font-size: 14px; max-width: min(240px, calc(100% - 24px)); }
 
     --tilt: 52deg;
@@ -549,14 +704,14 @@ export const Root = styled.div`
 
   @media (prefers-reduced-motion: reduce) {
     .room, .desk, .cover, .book { transition: none; }
-    .flame, .glow, .light, .fly, .window i, .steam, .halo { animation: none; }
+    .flame, .glow, .light, .fly, .window i, .steam, .halo, .flash, .loader-hero, .dots i, .loader-bar i { animation: none; }
     .bubble { animation-duration: 0.01s; animation-fill-mode: none; }
   }
 `;
 
 /** The open book, laid over the dimmed room. */
 export const Reader = styled.div`
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 5;
   animation: ${fadeIn} 0.45s ease both;

@@ -58,6 +58,22 @@ export const QUIPS: Record<string, Record<Lang, readonly string[]>> = {
     ru: ['Вижу будущее… вы пишете ему оффер.', 'Шар показывает: дедлайн будет соблюдён.', 'Туманно… а нет, это просто CSS.'],
     en: ['I see the future… you are writing him an offer.', 'The orb says: the deadline will be met.', 'Cloudy… oh wait, that is just CSS.'],
   },
+  engine: {
+    ru: ['Механический ПК. Билд идёт три минуты, зато на шестерёнках.', 'Три цилиндра, ноль зависаний.', 'Жрёт уголь, зато TypeScript тянет.'],
+    en: ['A mechanical PC. The build takes three minutes, but on real gears.', 'Three cylinders, zero freezes.', 'Burns coal, still runs TypeScript.'],
+  },
+  cvScroll: {
+    ru: ['Свиток с резюме летит к вам. Берегите, как оффер.', 'Королевский указ: нанять немедля. PDF прилагается.'],
+    en: ['The CV scroll is on its way. Guard it like an offer.', 'By royal decree: hire at once. PDF attached.'],
+  },
+  mug: {
+    ru: ['Кофе превращается в код. Проверенный конвейер.', 'Вторая чашка. Задача уже в ревью.', 'Без кофе деплой не начнётся.', 'Пусто. Как бэклог после него.', 'Долил. Можно брать следующий спринт.'],
+    en: ['Coffee turns into code. A proven pipeline.', 'Second cup. The task is already in review.', 'No coffee, no deploy.', 'Empty. Like the backlog after he is done.', 'Refilled. Ready for the next sprint.'],
+  },
+  bugJar: {
+    ru: ['Баги под контролем.', 'Пойманы, пронумерованы, закрыты.', 'Не фича. Но и не на проде.'],
+    en: ['Bugs: under control.', 'Caught, numbered, closed.', 'Not a feature. Not in production either.'],
+  },
   duck: {
     ru: ['Кря! Найми, не потеряй такого профи!', 'Я слушаю про его баги. Слушать почти нечего.', 'Уточка одобряет. Нанимайте.'],
     en: ["Quack! Hire him — don't lose a pro like this!", 'I listen to his bugs. There is not much to listen to.', 'The duck approves. Hire away.'],
@@ -82,4 +98,33 @@ export const QUIPS: Record<string, Record<Lang, readonly string[]>> = {
     ru: ['Роутер ловит только хорошие вакансии.', 'На этих полках всё, кроме его недостатков.'],
     en: ['This router only picks up good job offers.', 'Everything is on these shelves except his flaws.'],
   },
+};
+
+/** What a prop is called in the label that appears when the pointer is over it. */
+export const NAMES: Record<string, Record<Lang, string>> = {
+  book: { ru: 'Открыть книгу', en: 'Open the book' },
+  cvScroll: { ru: 'Скачать резюме', en: 'Download the CV' },
+  candle: { ru: 'Свеча', en: 'Candle' },
+  tomato: { ru: 'Сеньор Помидор', en: 'Senior Tomato' },
+  grove: { ru: 'Мухоморы', en: 'Toadstools' },
+  potion: { ru: 'Зелье', en: 'Potion' },
+  writing: { ru: 'Перо', en: 'Quill' },
+  windowGroup: { ru: 'Окно', en: 'Window' },
+  cat: { ru: 'Кот', en: 'Cat' },
+  cauldron: { ru: 'Котёл', en: 'Cauldron' },
+  wand: { ru: 'Волшебная палочка', en: 'Wand' },
+  chest: { ru: 'Сундук', en: 'Chest' },
+  lantern: { ru: 'Фонарь', en: 'Lantern' },
+  hat: { ru: 'Шляпа', en: 'Hat' },
+  crystals: { ru: 'Кристаллы', en: 'Crystals' },
+  orbGroup: { ru: 'Хрустальный шар', en: 'Crystal ball' },
+  duck: { ru: 'Уточка', en: 'Rubber duck' },
+  keyboard: { ru: 'Клавиатура', en: 'Keyboard' },
+  laptop: { ru: 'Ноутбук', en: 'Laptop' },
+  robot: { ru: 'Робот', en: 'Robot' },
+  caseLeft: { ru: 'Стеллаж', en: 'Shelves' },
+  caseRight: { ru: 'Стеллаж', en: 'Shelves' },
+  bugJar: { ru: 'Банка с багами', en: 'Jar of bugs' },
+  mug: { ru: 'Кофе', en: 'Coffee' },
+  engine: { ru: 'Механический ПК', en: 'Mechanical PC' },
 };

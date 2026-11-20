@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLanguage } from '@hooks/useLanguage';
 import { Lang } from '../../translations';
-import VariantSwitcher from '../VariantSwitcher';
 import { useFonts } from '../useFonts';
 import {
   CHIP_COMMANDS, ListCommand, TOUR, complete, isLang, parse, resolve, tourAfter,
@@ -186,7 +185,7 @@ const Terminal: React.FC = () => {
       const typing = document.activeElement === inputRef.current && viewport.scale < 1.05;
       const covered = typing && window.innerHeight - viewport.height > 120;
       if (covered) {
-        root.style.height = `${Math.round(viewport.height)}px`;
+        root.style.height = `${Math.round(viewport.height - root.getBoundingClientRect().top)}px`;
         window.scrollTo(0, 0);
       } else {
         root.style.removeProperty('height');
@@ -275,9 +274,7 @@ const Terminal: React.FC = () => {
           <span className="wtitle" aria-hidden="true">
             cupnii.sh{lastTyped && <span className="wcmd"> — {lastTyped}</span>}
           </span>
-          <div className="switch">
-            <VariantSwitcher className="variants" />
-          </div>
+          <span className="switch" aria-hidden="true" />
           <div className="lang" role="group" aria-label={s.langLabel}>
             {LANGS.map((code) => (
               <button

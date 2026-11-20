@@ -47,8 +47,7 @@ export const Root = styled.div`
 
   /* Positioned, so absolutely placed helpers (screen-reader text) are clipped here and never widen the page. */
   position: relative;
-  height: 100vh;
-  height: 100dvh;
+  height: var(--app-h, 100dvh);
   overflow: hidden;
   color: var(--text);
   font-family: 'Onest', system-ui, sans-serif;

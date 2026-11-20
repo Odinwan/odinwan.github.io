@@ -28,7 +28,7 @@ export const Layout = styled.div`
   --top: 64px;
   --rail: 70px;
 
-  height: 100dvh;
+  height: var(--app-h, 100dvh);
   display: grid;
   grid-template-columns: 1fr;
 
@@ -38,7 +38,7 @@ export const Layout = styled.div`
   /* ---------- phone frame ---------- */
   .phone {
     position: relative;
-    height: 100dvh;
+    height: var(--app-h, 100dvh);
     width: 100%;
     background: var(--bg);
     color: var(--fg);
@@ -972,7 +972,7 @@ export const Layout = styled.div`
     }
 
     .phone {
-      height: min(calc(100dvh - 40px), 940px);
+      height: min(calc(var(--app-h, 100dvh) - 40px), 940px);
       width: auto;
       aspect-ratio: 9 / 16;
       border-radius: 24px;

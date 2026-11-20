@@ -19,6 +19,9 @@ export interface TaleStrings {
   page: (n: number, total: number) => string;
   pages: (a: number, b: number, total: number) => string;
   prev: string;
+  /** Short reminder of how to turn pages, shown in the bottom bar. */
+  keysHint: string;
+  swipeHint: string;
   next: string;
   toContents: string;
   close: string;
@@ -52,6 +55,8 @@ export const S: Record<Lang, TaleStrings> = {
     page: (n, total) => `p. ${n} of ${total}`,
     pages: (a, b, total) => `pp. ${a}–${b} of ${total}`,
     prev: 'Previous page',
+    keysHint: '← → turn pages · Esc closes the book',
+    swipeHint: 'Swipe or tap the arrows',
     next: 'Next page',
     toContents: 'Contents',
     close: 'Close the book',
@@ -108,6 +113,8 @@ export const S: Record<Lang, TaleStrings> = {
     page: (n, total) => `стр. ${n} из ${total}`,
     pages: (a, b, total) => `стр. ${a}–${b} из ${total}`,
     prev: 'Предыдущая страница',
+    keysHint: '← → листать · Esc — закрыть книгу',
+    swipeHint: 'Листайте свайпом или стрелками',
     next: 'Следующая страница',
     toContents: 'Оглавление',
     close: 'Закрыть книгу',
