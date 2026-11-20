@@ -3112,11 +3112,14 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   const targets = () => [book, ...toys.map((toy) => toy.root)];
 
   /** What is under the pointer: the book, one of the toys, or nothing. */
-  const pick = (e: PointerEvent | MouseEvent): 'book' | Toy | null => {
+  const pickAt = (clientX: number, clientY: number): 'book' | Toy | null => {
     const box = canvas.getBoundingClientRect();
-    ndc.set(((e.clientX - box.left) / box.width) * 2 - 1, -((e.clientY - box.top) / box.height) * 2 + 1);
+    ndc.set(((clientX - box.left) / box.width) * 2 - 1, -((clientY - box.top) / box.height) * 2 + 1);
     raycaster.setFromCamera(ndc, camera);
-    const hit = raycaster.intersectObjects(targets(), true).find((h) => (h.object as THREE.Mesh).isMesh);
+    // Only what is actually drawn can be touched. The raycaster does not look at `visible`, so a bookcase
+    // hidden on a narrow screen (or closed shutters, or the owl between visits) would swallow the tap.
+    const shown = (o: THREE.Object3D | null): boolean => { for (let n = o; n; n = n.parent) if (!n.visible) return false; return true; };
+    const hit = raycaster.intersectObjects(targets(), true).find((h) => (h.object as THREE.Mesh).isMesh && shown(h.object));
     if (!hit) return null;
     for (let o: THREE.Object3D | null = hit.object; o; o = o.parent) {
       if (o === book) return 'book';
@@ -3124,6 +3127,33 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
       if (toy) return toy;
     }
     return null;
+  };
+
+  // A finger is not a pointer: on touch screens a tap that lands just beside a small thing, on the big
+  // thing behind it (the cat against the window, the hat on the chest), is given to the small one.
+  const fingers = window.matchMedia('(pointer: coarse)').matches;
+  const toySize = new Map<Toy, number>();
+  const sizeOfToy = (toy: Toy): number => {
+    let size = toySize.get(toy);
+    if (size === undefined) {
+      size = new THREE.Box3().setFromObject(toy.anchor).getSize(new THREE.Vector3()).length();
+      toySize.set(toy, size);
+    }
+    return size;
+  };
+  const SLOP = [[-14, 0], [14, 0], [0, -14], [0, 14], [-10, -10], [10, -10], [-10, 10], [10, 10]];
+  const pick = (e: PointerEvent | MouseEvent): 'book' | Toy | null => {
+    const direct = pickAt(e.clientX, e.clientY);
+    if (!fingers || direct === 'book') return direct;
+    let best = direct;
+    let bestSize = direct ? sizeOfToy(direct) : Infinity;
+    for (const [dx, dy] of SLOP) {
+      const near = pickAt(e.clientX + dx, e.clientY + dy);
+      if (!near || near === 'book' || near === best) continue;
+      const size = sizeOfToy(near);
+      if (size < bestSize * 0.6) { best = near; bestSize = size; }
+    }
+    return best;
   };
 
   const onMove = (e: PointerEvent) => {
@@ -3901,7 +3931,18 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     (window as unknown as Record<string, unknown>).__taleEvent = (kind: string) => { if (kind === 'mail') startMail(); else if (kind === 'owl') startOwl(); else startKnock(); };
     (window as unknown as Record<string, unknown>).__taleIntro = (k: number) => { introTween = null; introK = k; };
     // For measuring: draw calls, textures, programs (renderer.info) and the scene itself.
-    (window as unknown as Record<string, unknown>).__talePerf = { renderer, scene, camera, render, poke: (id: string) => toys.find((toy) => toy.id === id)?.poke() };
+    (window as unknown as Record<string, unknown>).__talePerf = { renderer, scene, camera, render, poke: (id: string) => toys.find((toy) => toy.id === id)?.poke(),
+      // Where a prop is on screen, and what a tap at a point would hit: for testing touch targets.
+      where: (id: string) => {
+        const toy = toys.find((x) => x.id === id);
+        if (!toy) return null;
+        const box3 = new THREE.Box3().setFromObject(toy.anchor);
+        const c = box3.getCenter(new THREE.Vector3()).project(camera);
+        const r = canvas.getBoundingClientRect();
+        return [r.left + ((c.x + 1) / 2) * r.width, r.top + ((1 - c.y) / 2) * r.height];
+      },
+      hit: (x: number, y: number) => { const w = pick({ clientX: x, clientY: y } as MouseEvent); return w === 'book' ? 'book' : w ? w.id : null; },
+    };
   }
 
   let coverTex: THREE.CanvasTexture | null = null;
