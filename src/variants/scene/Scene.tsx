@@ -7,7 +7,7 @@ import { Tomato } from '../tale/Tomato';
 import { createCoverCanvas, paintCover, paintEndpaper, paintFirstPage, svgToImage } from './cover';
 import FlatRoom from './FlatRoom';
 import { NAMES, QUIPS } from './quips';
-import { isSoundOn, play, preloadSounds, setSoundOn } from './sfx';
+import { duckAmbience, isSoundOn, play, preloadSounds, setSoundOn, startAmbience, stopAmbience } from './sfx';
 import { CV_URL } from '../../data/links';
 import { trackEvent } from '../../analytics';
 import { Reader, Root } from './Scene.styled';
@@ -108,7 +108,7 @@ const Scene: React.FC = () => {
   const bubbleTimer = useRef(0);
   const [tag, setTag] = useState<{ id: string; x: number; y: number } | null>(null);
   const [sound, setSound] = useState(isSoundOn);
-  const toggleSound = () => { const next = !sound; setSound(next); setSoundOn(next); if (next) { preloadSounds(); play('lantern'); } };
+  const toggleSound = () => { const next = !sound; setSound(next); setSoundOn(next); if (next) { preloadSounds(); startAmbience(); play('lantern'); } };
   const download = useCallback(() => {
     play('cvScroll');
     const link = document.createElement('a');
@@ -205,6 +205,7 @@ const Scene: React.FC = () => {
         stageRef.current = stage;
         setMode('3d');
         preloadSounds();
+        startAmbience();
         // Keep the loader up while the first frames compile, and never just flash it.
         const shown = performance.now() - startedAt;
         window.setTimeout(() => {
@@ -224,6 +225,7 @@ const Scene: React.FC = () => {
       cancelled = true;
       window.clearTimeout(timer.current);
       window.clearTimeout(bubbleTimer.current);
+      stopAmbience();
       stage?.dispose();
       stageRef.current = null;
     };
@@ -273,6 +275,9 @@ const Scene: React.FC = () => {
 
     return () => { cancelled = true; };
   }, [mode, s, tr.intro.name]);
+
+  // The background steps back while the book is open.
+  useEffect(() => { duckAmbience(phase === 'reading'); }, [phase]);
 
   const atTable = phase === 'table' && arrived;
 
