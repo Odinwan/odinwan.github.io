@@ -63,8 +63,8 @@ export const t = {
       jobs: [
         {
           role: 'Senior Frontend Developer',
-          company: 'DuelBet',
-          note: 'iGaming & crypto entertainment platform',
+          company: 'iGaming Platform (NDA)',
+          note: 'Real-time entertainment platform with crypto wallets and payments',
           period: 'May 2026 — Present',
           current: true,
           items: [
@@ -297,8 +297,8 @@ export const t = {
       jobs: [
         {
           role: 'Senior Frontend Developer',
-          company: 'DuelBet',
-          note: 'iGaming и крипто-развлекательная платформа',
+          company: 'iGaming-платформа (NDA)',
+          note: 'Realtime-развлекательная платформа с крипто-кошельками и платежами',
           period: 'Май 2026 — н.в.',
           current: true,
           items: [
