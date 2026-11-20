@@ -411,11 +411,7 @@ export const play = (id: string): void => {
   if (!enabled) return;
   try {
     audio();
-    if (playSample(id)) {
-      // The chest also spills its coins.
-      if (id === 'chest') playSample('coins', 0.45, 0.8);
-      return;
-    }
+    if (playSample(id)) return;
     void load(id);
     SOUNDS[id]?.();
   } catch { /* sound is a nicety; never let it break the scene */ }
