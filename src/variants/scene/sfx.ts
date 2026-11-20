@@ -395,7 +395,11 @@ export const preloadSounds = (): void => {
   SAMPLE_IDS.forEach((id) => { void load(id); });
 };
 
-const playSample = (id: string, at = 0, gain = 1): boolean => {
+/** Clicks sit well under the background; only the book's own moments are allowed to be big. */
+const LEVEL: Record<string, number> = { bookOpen: 0.75, bookClose: 0.5, page: 0.4, cvScroll: 0.45, engine: 0.32 };
+const CLICK_LEVEL = 0.3;
+
+const playSample = (id: string, at = 0, gain = LEVEL[id] ?? CLICK_LEVEL): boolean => {
   const buf = samples.get(id);
   if (!buf || !ctx || !bus) return false;
   const src = ctx.createBufferSource();
@@ -407,12 +411,63 @@ const playSample = (id: string, at = 0, gain = 1): boolean => {
   return true;
 };
 
+/* ---------- background ---------- */
+
+let ambience: { src: AudioBufferSourceNode; level: GainNode } | null = null;
+let wantAmbience = false;
+const AMBIENCE_LEVEL = 0.34;
+
+/** Browsers keep audio suspended until the visitor interacts; start for real on the first touch. */
+const unlock = (): void => {
+  if (ctx && ctx.state === 'suspended') void ctx.resume();
+};
+
+/** The room's own sound: a quiet looping bed under everything. */
+export const startAmbience = (): void => {
+  wantAmbience = true;
+  if (!enabled || ambience) return;
+  const ac = audio();
+  if (!ac) return;
+  window.addEventListener('pointerdown', unlock, { once: true });
+  window.addEventListener('keydown', unlock, { once: true });
+  void load('ambience').then(() => {
+    const buf = samples.get('ambience');
+    if (!buf || !master || ambience || !wantAmbience || !enabled) return;
+    const src = ac.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    const level = ac.createGain();
+    // Straight to the output: it already has its own space, and it should not pump the reverb.
+    level.gain.setValueAtTime(0.0001, ac.currentTime);
+    level.gain.exponentialRampToValueAtTime(AMBIENCE_LEVEL, ac.currentTime + 3);
+    src.connect(level).connect(master);
+    src.start();
+    ambience = { src, level };
+  });
+};
+
+export const stopAmbience = (): void => {
+  wantAmbience = false;
+  if (!ambience || !ctx) return;
+  const { src, level } = ambience;
+  ambience = null;
+  level.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.25);
+  src.stop(ctx.currentTime + 1.2);
+};
+
+/** Pull the background down while something else needs the room (the book being read). */
+export const duckAmbience = (down: boolean): void => {
+  if (ambience && ctx) ambience.level.gain.setTargetAtTime(down ? AMBIENCE_LEVEL * 0.45 : AMBIENCE_LEVEL, ctx.currentTime, 0.4);
+};
+
 export const play = (id: string): void => {
   if (!enabled) return;
   try {
     audio();
+    if (bus && ctx) bus.gain.setTargetAtTime(1, ctx.currentTime, 0.01);
     if (playSample(id)) return;
     void load(id);
+    if (bus && ctx) bus.gain.setTargetAtTime(id === 'bookOpen' ? 0.8 : 0.45, ctx.currentTime, 0.01);
     SOUNDS[id]?.();
   } catch { /* sound is a nicety; never let it break the scene */ }
 };

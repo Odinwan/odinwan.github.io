@@ -62,3 +62,9 @@ and given short fades. Files marked "mix" combine several sources.
 Note on `wand.mp3`: the source page describes it as a mix of two other
 Freesound recordings (chimes by urupin and vrodge), both stated there as CC0,
 and the mix itself is published as Creative Commons 0.
+
+## Background
+
+| File | Source | Author | Licence |
+|---|---|---|---|
+| `ambience.mp3` | <https://freesound.org/s/559389/> — "Mystic Forest Ambient.wav" (64 s cut from 0:04, faded at both ends, mono) | szegvari | Creative Commons 0 — <http://creativecommons.org/publicdomain/zero/1.0/> (licence link read from the sound's page on 2026-11-20) |
