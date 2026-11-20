@@ -9,9 +9,6 @@ const BAR = 44;
 /** The strip borrows each design's colours so it reads as part of it. */
 const SKIN: Record<VariantId, { bg: string; fg: string; line: string }> = {
   classic: { bg: '#e9e7e1', fg: '#17130e', line: 'rgba(23, 19, 14, 0.14)' },
-  reels: { bg: '#0b0b0b', fg: '#f5f0e6', line: 'rgba(245, 240, 230, 0.14)' },
-  terminal: { bg: '#0a0f17', fg: '#d6e2f0', line: 'rgba(214, 226, 240, 0.14)' },
-  chat: { bg: '#14111b', fg: '#f0ebf8', line: 'rgba(240, 235, 248, 0.12)' },
   tale: { bg: '#1a0f16', fg: '#ffe2a1', line: 'rgba(233, 180, 76, 0.3)' },
 };
 

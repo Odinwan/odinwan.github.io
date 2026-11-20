@@ -72,6 +72,36 @@ const tagIn = keyframes`
   to { opacity: 1; transform: translate(-50%, calc(-100% - 12px)) scale(1); }
 `;
 
+const envIn = keyframes`
+  0% { opacity: 0; transform: translateY(60px) scale(0.5) rotate(-8deg); }
+  25% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+  70% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+  100% { opacity: 0; transform: translateY(150px) scale(0.9) rotate(3deg); }
+`;
+const flapOpen = keyframes`
+  0%, 28% { transform: rotateX(0deg); }
+  55%, 100% { transform: rotateX(-180deg); }
+`;
+const sealPop = keyframes`
+  0%, 24% { opacity: 1; transform: scale(1); }
+  34%, 100% { opacity: 0; transform: scale(1.8); }
+`;
+const letterGlow = keyframes`
+  0%, 30% { opacity: 0; transform: scale(0.4); }
+  52% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0.22; transform: scale(1.25); }
+`;
+const paperRise = keyframes`
+  0%, 40% { opacity: 0; transform: translateY(70px) scale(0.45, 0.08) rotate(0deg); }
+  50% { opacity: 1; }
+  72% { opacity: 1; transform: translateY(-22px) scale(1.04, 1.04) rotate(-2.4deg); }
+  100% { opacity: 1; transform: translateY(0) scale(1) rotate(-1.2deg); }
+`;
+const dimIn = keyframes`
+  from { opacity: 0; }
+  to { opacity: 1; }
+`;
+
 const fadeIn = keyframes`
   from { opacity: 0; transform: scale(0.96); }
   to { opacity: 1; transform: none; }
@@ -111,7 +141,7 @@ export const Root = styled.div`
   .dim {
     position: absolute;
     inset: 0;
-    background: rgba(12, 7, 14, 0.78);
+    background: rgba(12, 7, 14, 0.88);
     opacity: 0;
     transition: opacity 0.5s ease;
     pointer-events: none;
@@ -172,7 +202,9 @@ export const Root = styled.div`
     color: #2a1810;
     box-shadow: 0 5px 0 rgba(42, 24, 16, 0.4), 0 14px 26px rgba(0, 0, 0, 0.4);
 
-    h2 { margin: 0 26px 6px 0; font: 400 15px/1.2 var(--fairy, 'Lora'), 'Lora', Georgia, serif; }
+    /* A ruled inner border, as on an old proclamation. */
+    &::before { content: ''; position: absolute; inset: 4px; border: 1px dashed rgba(122, 80, 30, 0.5); border-radius: 9px; pointer-events: none; }
+    h2 { margin: 0 26px 7px 0; color: #96201a; font: 400 16px/1.2 var(--fairy, 'Lora'), 'Lora', Georgia, serif; }
     ul { margin: 0; padding: 0; list-style: none; }
     li {
       position: relative;
@@ -207,12 +239,12 @@ export const Root = styled.div`
     height: 44px;
     border: 2px solid #2a1810;
     border-radius: 50%;
-    background: var(--gold);
+    background: linear-gradient(180deg, #fbe3a0, #e9b44c 55%, #c98f2e);
     color: #2a1810;
     font: 700 20px 'Lora', Georgia, serif;
-    box-shadow: 0 4px 0 rgba(42, 24, 16, 0.5), 0 10px 18px rgba(0, 0, 0, 0.35);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 4px 0 rgba(42, 24, 16, 0.6), 0 10px 18px rgba(0, 0, 0, 0.35);
     cursor: pointer;
-    &:hover { background: #f7d98a; }
+    &:hover { filter: brightness(1.08); }
   }
 
   /* Name of the thing under the pointer — the sign that it can be clicked. */
@@ -230,6 +262,178 @@ export const Root = styled.div`
     transform: translate(-50%, calc(-100% - 12px));
     pointer-events: none;
     animation: ${tagIn} 0.16s ease-out both;
+  }
+
+  /* Call a visitor: owl, letter or knock. Bottom right, out of the way of the table. */
+  .callers {
+    position: absolute;
+    right: 14px;
+    bottom: calc(18px + env(safe-area-inset-bottom));
+    z-index: 3;
+    display: flex;
+    gap: 8px;
+
+    align-items: center;
+
+    /* The three callers are round; the tip button beside them keeps its own shape. */
+    > button:not([class]) {
+      display: grid;
+      place-items: center;
+      width: 46px;
+      height: 46px;
+      padding: 0;
+      border: 2px solid #2a1810;
+      border-radius: 50%;
+      background: linear-gradient(180deg, #fbe3a0, #e9b44c 55%, #c98f2e);
+      font-size: 21px;
+      line-height: 1;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 4px 0 rgba(42, 24, 16, 0.6), 0 10px 18px rgba(0, 0, 0, 0.35);
+      cursor: pointer;
+      transition: transform 0.12s ease, filter 0.12s ease;
+      &:hover { filter: brightness(1.08); transform: translateY(-2px); }
+      &:active { transform: translateY(3px); }
+    }
+  }
+
+  /* The note that greets you at the door. */
+  .welcome {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+
+    article {
+      position: relative;
+      width: min(440px, 100%);
+      max-height: 100%;
+      overflow-y: auto;
+      padding: 18px 28px 20px;
+      border: 2px solid #2a1810;
+      border-radius: 16px;
+      background:
+        radial-gradient(90% 60% at 20% 10%, rgba(255, 255, 255, 0.55), transparent 60%),
+        linear-gradient(170deg, #fff6dc, #ecd9a8);
+      color: #2a1810;
+      text-align: center;
+      box-shadow: 0 8px 0 rgba(42, 24, 16, 0.4), 0 26px 50px rgba(0, 0, 0, 0.55);
+      animation: ${fadeIn} 0.4s ease both;
+    }
+    article::before { content: ''; position: absolute; inset: 6px; border: 1px dashed rgba(122, 80, 30, 0.45); border-radius: 11px; pointer-events: none; }
+    h2 { margin: 0 0 10px; color: #96201a; font: 400 clamp(20px, 5.4vw, 24px)/1.2 var(--fairy, 'Lora'), 'Lora', Georgia, serif; }
+    p { margin: 0 0 10px; font: 500 16px/1.5 'Lora', Georgia, serif; text-wrap: pretty; }
+  }
+  .welcome-veil { position: absolute; inset: 0; border: 0; background: rgba(12, 7, 14, 0.6); cursor: pointer; animation: ${dimIn} 0.4s ease both; }
+  .welcome-hero { display: block; width: 112px; height: auto; margin: 0 auto 2px; animation: ${bob} 2.4s ease-in-out infinite; }
+  .welcome-go {
+    position: relative;
+    margin: 6px 0 10px;
+    padding: 11px 24px 12px;
+    border: 2px solid #2a1810;
+    border-radius: 13px;
+    background: linear-gradient(180deg, #fbe3a0, #e9b44c 55%, #c98f2e);
+    color: #2a1810;
+    font: 400 18px/1.1 var(--fairy, 'Lora'), 'Lora', Georgia, serif;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 4px 0 rgba(42, 24, 16, 0.6), 0 10px 18px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    transition: transform 0.12s ease, filter 0.12s ease;
+    &:hover { filter: brightness(1.08); transform: translateY(-2px); }
+    &:active { transform: translateY(3px); }
+  }
+  .welcome .welcome-note { margin: 0; color: #6c5947; font-size: 13px; font-style: italic; }
+
+  /* A letter that blew in, lying open over the room. */
+  .letter {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+
+    article {
+      position: relative;
+      width: min(420px, 100%);
+      padding: 26px 28px 22px;
+      border: 2px solid #2a1810;
+      border-radius: 6px 14px 8px 16px;
+      background:
+        radial-gradient(90% 60% at 20% 10%, rgba(255, 255, 255, 0.55), transparent 60%),
+        linear-gradient(170deg, #fff6dc, #ecd9a8);
+      color: #2a1810;
+      box-shadow: 0 8px 0 rgba(42, 24, 16, 0.4), 0 26px 50px rgba(0, 0, 0, 0.55);
+      transform: rotate(-1.2deg);
+      transform-origin: 50% 70%;
+      animation: ${paperRise} 1.7s cubic-bezier(0.3, 0.7, 0.3, 1) both;
+    }
+    article::before { content: ''; position: absolute; inset: 6px; border: 1px dashed rgba(122, 80, 30, 0.45); border-radius: 4px 10px 6px 12px; pointer-events: none; }
+  }
+  .letter-back { position: absolute; inset: 0; border: 0; background: rgba(12, 7, 14, 0.62); cursor: pointer; animation: ${dimIn} 0.5s ease both; }
+  .letter-glow {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(760px, 130vw);
+    aspect-ratio: 1;
+    margin: calc(min(760px, 130vw) / -2) 0 0 calc(min(760px, 130vw) / -2);
+    background: radial-gradient(closest-side, rgba(255, 244, 200, 0.85), rgba(255, 205, 110, 0.4) 40%, rgba(255, 190, 90, 0) 72%);
+    pointer-events: none;
+    animation: ${letterGlow} 1.7s ease-out both;
+  }
+  .env {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 280px;
+    height: 180px;
+    margin: -60px 0 0 -140px;
+    border: 2px solid #2a1810;
+    border-radius: 6px;
+    background:
+      linear-gradient(to top right, transparent 49.4%, rgba(122, 80, 30, 0.5) 49.6% 50.4%, transparent 50.6%),
+      linear-gradient(to top left, transparent 49.4%, rgba(122, 80, 30, 0.5) 49.6% 50.4%, transparent 50.6%),
+      linear-gradient(170deg, #fff6dc, #e6d09c);
+    box-shadow: 0 8px 0 rgba(42, 24, 16, 0.4), 0 22px 40px rgba(0, 0, 0, 0.5);
+    perspective: 700px;
+    pointer-events: none;
+    animation: ${envIn} 1.5s ease both;
+  }
+  .flap {
+    position: absolute;
+    inset: -2px -2px auto -2px;
+    height: 62%;
+    background: linear-gradient(180deg, #f3e2b4, #dcc48c);
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+    transform-origin: 50% 0;
+    animation: ${flapOpen} 1.5s ease both;
+  }
+  .seal {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 34px;
+    height: 34px;
+    margin: -17px 0 0 -17px;
+    border: 2px solid #5a0c08;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #e8473a, #96201a);
+    animation: ${sealPop} 1.5s ease both;
+  }
+  .letter-text { margin: 0 0 14px; font: italic 500 18px/1.5 'Lora', Georgia, serif; text-wrap: pretty; }
+  .letter-from { margin: 0 0 18px; color: #96201a; font: 400 16px/1.3 var(--fairy, 'Lora'), 'Lora', Georgia, serif; text-align: right; }
+  .letter-ok {
+    display: block;
+    margin: 0 auto;
+    padding: 9px 18px 10px;
+    border: 2px solid #2a1810;
+    border-radius: 11px;
+    background: linear-gradient(180deg, #fbe3a0, #e9b44c 55%, #c98f2e);
+    color: #2a1810;
+    font: 600 14px/1.2 'Lora', Georgia, serif;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 3px 0 rgba(42, 24, 16, 0.6);
+    cursor: pointer;
+    &:hover { filter: brightness(1.08); }
   }
 
   /* What the props say when you poke them. */
@@ -250,6 +454,7 @@ export const Root = styled.div`
     transform-origin: 50% 100%;
     animation: ${pop} 2.9s ease both;
     pointer-events: none;
+    &.long { animation-duration: 6s; }
 
     &::after {
       content: '';
@@ -608,25 +813,34 @@ export const Root = styled.div`
     gap: 8px;
     padding: 10px 14px;
     font-family: ${({ theme }) => theme.fonts.sans};
-    background: linear-gradient(to bottom, rgba(18, 12, 20, 0.85), transparent);
+    pointer-events: none;
+    > * { pointer-events: auto; }
   }
 
   .variants { flex: 1 1 0; min-width: 0; }
 
-  .lang.sound { margin-left: auto; font-size: 16px; line-height: 1; s { opacity: 0.45; } }
+  .lang.sound { margin-left: auto; font-size: 18px; s { opacity: 0.45; } }
   .lang + .lang { margin-left: 0; }
 
   .lang {
     flex-shrink: 0;
     margin-left: auto;
-    padding: 7px 12px;
-    border: 1px solid rgba(246, 234, 208, 0.3);
-    border-radius: 99px;
-    background: rgba(18, 12, 20, 0.5);
-    font-size: 13px;
-    font-weight: 700;
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border: 2px solid #2a1810;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #fbe3a0, #e9b44c 55%, #c98f2e);
+    color: #2a1810;
+    font: 700 13px/1 'Lora', Georgia, serif;
+    letter-spacing: 0.03em;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 3px 0 rgba(42, 24, 16, 0.6), 0 8px 14px rgba(0, 0, 0, 0.35);
     cursor: pointer;
-    &:hover { border-color: currentColor; }
+    transition: transform 0.12s ease, filter 0.12s ease;
+    &:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    &:active { transform: translateY(2px); }
   }
 
   .hint {
@@ -644,26 +858,33 @@ export const Root = styled.div`
     text-align: center;
 
     button {
-      padding: 12px 24px;
-      border: 1px solid var(--gold);
-      border-radius: 99px;
-      background: rgba(30, 16, 14, 0.8);
-      color: #ffe2a1;
-      font: 400 18px var(--fairy, 'Lora'), 'Lora', Georgia, serif;
+      padding: 12px 22px 13px;
+      border: 2px solid #2a1810;
+      border-radius: 14px;
+      background: linear-gradient(180deg, #fbe3a0, #e9b44c 55%, #c98f2e);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), inset 0 -2px 0 rgba(120, 70, 10, 0.35), 0 4px 0 rgba(42, 22, 8, 0.6), 0 12px 20px rgba(0, 0, 0, 0.4);
+      color: #2a1810;
+      font: 400 19px/1.1 var(--fairy, 'Lora'), 'Lora', Georgia, serif;
       letter-spacing: 0.02em;
+      text-shadow: 0 1px 0 rgba(255, 244, 200, 0.7);
       cursor: pointer;
-      backdrop-filter: blur(4px);
-      &:hover { background: var(--gold); color: #2a1608; }
+      transition: transform 0.12s ease, filter 0.12s ease;
+      &:hover { filter: brightness(1.08); transform: translateY(-2px); }
+      &:active { transform: translateY(3px); }
+      /* Little stars either side, like a title on a playbill. */
+      &:not(.second)::before, &:not(.second)::after { content: '✦'; content: '✦' / ''; display: inline-block; margin: 0 0.6em; color: #96201a; font-size: 0.7em; vertical-align: 0.15em; text-shadow: none; }
     }
 
     span { font-size: 14px; font-style: italic; opacity: 0.8; text-shadow: 0 1px 6px #000; }
 
     .second {
-      padding: 9px 18px;
-      border-color: rgba(233, 180, 76, 0.7);
-      background: rgba(30, 16, 14, 0.7);
-      font: 600 14px 'Lora', Georgia, serif;
+      padding: 8px 16px 9px;
+      border-radius: 11px;
+      background: linear-gradient(160deg, #fff6dc, #ecd9a8);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 3px 0 rgba(42, 22, 8, 0.6), 0 9px 16px rgba(0, 0, 0, 0.35);
+      font: 600 14px/1.2 'Lora', Georgia, serif;
       letter-spacing: 0;
+      text-shadow: none;
     }
   }
 
@@ -688,8 +909,12 @@ export const Root = styled.div`
     .variants { order: 2; flex: 1 0 100%; }
     .lang { order: 1; }
     .hint { bottom: calc(18px + env(safe-area-inset-bottom)); }
-    /* On phones the plaque sits above the button so it never hides the book. */
-    .help { left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom)); }
+    /* On a phone the row is a column up the right edge, above the buttons. */
+    .callers { flex-direction: column; right: 10px; bottom: calc(150px + env(safe-area-inset-bottom)); > button:not([class]) { width: 42px; height: 42px; font-size: 19px; } }
+    /* On phones the plaque sits above both buttons and stops short of the callers' column. */
+    .help { left: 10px; width: min(300px, calc(100% - 72px)); bottom: calc(124px + env(safe-area-inset-bottom)); }
+    /* The "?" goes up with it: beside the buttons there is no room for it on a narrow screen. */
+    .help-open { left: 10px; bottom: calc(124px + env(safe-area-inset-bottom)); }
     .bubble { font-size: 14px; max-width: min(240px, calc(100% - 24px)); }
 
     --tilt: 52deg;
@@ -702,9 +927,27 @@ export const Root = styled.div`
     .mug { margin-left: calc(var(--bw) * -0.5 - 84px); top: 20px; transform: rotateX(calc(var(--tilt) * -1)) scale(0.8); }
   }
 
+  /* Tablets: the plaque in the corner would reach under the buttons, so it sits above them. */
+  @media (min-width: 701px) and (max-width: 940px) {
+    .help { bottom: calc(124px + env(safe-area-inset-bottom)); }
+  }
+
+  /* A phone on its side: the picture is short, so the buttons shrink to leave the book in view. */
+  @media (max-height: 480px) and (orientation: landscape) and (max-width: 999px) {
+    .hint { bottom: calc(12px + env(safe-area-inset-bottom)); gap: 6px; }
+    .hint button { padding: 8px 18px 9px; font-size: 16px; }
+    .hint .second { padding: 6px 12px 7px; font-size: 13px; }
+    .callers { flex-direction: row; right: 14px; bottom: calc(18px + env(safe-area-inset-bottom)); }
+    .help-open { left: 14px; bottom: calc(18px + env(safe-area-inset-bottom)); }
+    .help { left: 14px; width: min(300px, calc(100% - 28px)); bottom: calc(100px + env(safe-area-inset-bottom)); max-height: calc(100% - 108px - env(safe-area-inset-bottom)); overflow-y: auto; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .room, .desk, .cover, .book { transition: none; }
-    .flame, .glow, .light, .fly, .window i, .steam, .halo, .flash, .loader-hero, .dots i, .loader-bar i { animation: none; }
+    .flame, .glow, .light, .fly, .window i, .steam, .halo, .flash, .loader-hero, .dots i, .loader-bar i, .welcome-hero { animation: none; }
+    .welcome article, .welcome-veil { animation: none; }
+    .letter article, .letter-back { animation: none; }
+    .env, .letter-glow { display: none; }
     .bubble { animation-duration: 0.01s; animation-fill-mode: none; }
   }
 `;

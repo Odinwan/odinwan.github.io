@@ -7,9 +7,6 @@ import { VariantId, useVariant } from './variants/variants';
 
 const views: Record<VariantId, React.LazyExoticComponent<React.ComponentType>> = {
   classic: lazy(() => import('./variants/classic/Classic')),
-  reels: lazy(() => import('@components/Reels/Reels')),
-  terminal: lazy(() => import('./variants/terminal/Terminal')),
-  chat: lazy(() => import('./variants/chat/Chat')),
   tale: lazy(() => import('./variants/scene/Scene')),
 };
 

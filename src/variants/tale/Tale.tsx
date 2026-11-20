@@ -6,7 +6,7 @@ import { buildBook, type Book, type PageCtx } from './pages';
 import { S } from './strings';
 import { Root, Switcher } from './Tale.styled';
 
-const FONTS = 'https://fonts.googleapis.com/css2?family=Literata:ital,wght@0,400;0,600;1,400;1,600&family=Yeseva+One&family=Ruslan+Display&family=Uncial+Antiqua&display=swap';
+export const FONTS = 'https://fonts.googleapis.com/css2?family=Literata:ital,wght@0,400;0,600;1,400;1,600&family=Yeseva+One&family=Ruslan+Display&family=Uncial+Antiqua&display=swap';
 const WIDE = '(min-width: 900px)';
 const REDUCED = '(prefers-reduced-motion: reduce)';
 const LANGS: Lang[] = ['en', 'ru'];
@@ -82,7 +82,7 @@ const PageView: React.FC<PageProps> = ({ book, index, side, ctx, shortTitle }) =
   }
   return (
     <div className={`page ${side}`}>
-      <p className="running" aria-hidden="true">{side === 'left' ? shortTitle : def.title}</p>
+      <p className="running" aria-hidden="true">{side === 'left' ? def.part ?? shortTitle : def.title}</p>
       <Scroller>{def.render(ctx)}</Scroller>
       <p className="folio" aria-hidden="true">{index}</p>
     </div>
@@ -222,14 +222,16 @@ const Tale: React.FC<TaleProps> = ({ onClose, startPage = 0, onTurn }) => {
     // While a leaf turns, the half it uncovers already shows the new page and the other half still shows the old one.
     const baseLeft = f && f.dir === 1 ? fLeft : left;
     const baseRight = f && f.dir === -1 ? fRight : right;
+    // The cover board on the left belongs to the turning cover until it has landed.
+    const hard = !!f && (f.from === 0 || spread === 0);
     bookNode = (
-      <div className={`book${spread === 0 ? ' closed' : ''}`}>
+      <div className={`book${spread === 0 ? ' closed' : ''}${spread === 0 || hard ? ' half' : ''}`}>
         <div className="slot">{baseLeft >= 0 && sheet(baseLeft, 'left')}</div>
         <div className="slot">{sheet(baseRight, 'right')}</div>
         {f && (
           <div
             key={f.id}
-            className={`leaf ${f.dir === 1 ? 'fwd' : 'back'}`}
+            className={`leaf ${f.dir === 1 ? 'fwd' : 'back'}${hard ? ' hard' : ''}`}
             aria-hidden="true"
             onAnimationEnd={(e) => { if (e.target === e.currentTarget) setFlip(null); }}
           >

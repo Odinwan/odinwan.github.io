@@ -35,6 +35,12 @@ const Nav = styled.nav`
 
   .home { padding: 7px 8px; font-size: 1.15em; }
 
+  /* Bigger targets for a thumb; the strip they sit in is 44px tall. */
+  @media (pointer: coarse) {
+    button { min-height: 36px; }
+    .home { min-width: 36px; }
+  }
+
   &.stacked {
     display: flex;
     flex-direction: column;
