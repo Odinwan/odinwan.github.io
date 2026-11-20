@@ -1880,9 +1880,19 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     caseLeft.position.x = -corner;
     caseRight.position.x = corner;
     caseLeft.visible = caseRight.visible = half > 1.2;
-    curio.position.x = Math.min(0.34, Math.max(0.1, half - 0.4));
-    portrait.position.x = windowGroup.position.x + 0.5;
+    // Along the wall, left to right: window, portrait, curio shelf. Each takes its place
+    // only if there is room, so nothing is ever drawn across its neighbour.
+    const windowRight = windowGroup.position.x + 0.31;
     portrait.visible = half > 1.05;
+    portrait.position.x = windowRight + 0.16;
+    const shelfLeft = portrait.visible ? portrait.position.x + 0.15 : windowRight + 0.02;
+    const room = Math.min(shelfLeft + 0.68, half - 0.05) - shelfLeft;
+    const fit = Math.max(0.5, Math.min(1, room / 0.68));
+    curio.visible = room / 0.68 > 0.5;
+    curio.scale.setScalar(fit);
+    curio.position.x = shelfLeft + 0.33 * fit;
+    curio.position.y = 0.5 + (1 - fit) * 0.12;
+    board.position.x = Math.max(0.86, curio.position.x + 0.33 * fit + 0.26);
     board.visible = half > 1.25;
     lantern.position.x = windowGroup.position.x - 0.42;
     lantern.visible = half > 1.2;
