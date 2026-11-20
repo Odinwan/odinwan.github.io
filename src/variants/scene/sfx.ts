@@ -33,11 +33,36 @@ const whiteNoise = (ac: AudioContext, seconds: number): AudioBuffer => {
   return buf;
 };
 
+/**
+ * Browsers start an audio context suspended and wake it only from inside a real tap, click or key press.
+ * Mobile Safari is strict about which events count (a touch that ends, a click — not the start of a press),
+ * so listen to all of them and keep trying until the context is actually running.
+ */
+const UNLOCK_EVENTS = ['touchend', 'pointerup', 'click', 'keydown'] as const;
+const armUnlock = (ac: AudioContext): void => {
+  const wake = () => {
+    if (ac.state === 'running') {
+      UNLOCK_EVENTS.forEach((type) => window.removeEventListener(type, wake, true));
+      return;
+    }
+    // A hidden tab stays quiet; setAudioAwake brings it back when it is looked at again.
+    if (enabled && !document.hidden) void ac.resume().catch(() => undefined);
+  };
+  UNLOCK_EVENTS.forEach((type) => window.addEventListener(type, wake, true));
+};
+
 const audio = (): AudioContext | null => {
   if (!ctx) {
     const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctor) return null;
     ctx = new Ctor();
+    // iPhones: by default page audio obeys the ring/silent switch, so a muted phone plays nothing.
+    // Declaring this as playback (where the API exists) makes it behave like any music or video page.
+    try {
+      const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+      if (session) session.type = 'playback';
+    } catch { /* not supported: nothing to do */ }
+    armUnlock(ctx);
     master = ctx.createGain();
     master.gain.value = enabled ? VOLUME : 0;
     // A gentle limiter so layered sounds never clip.
@@ -370,7 +395,7 @@ const SOUNDS: Record<string, () => void> = {
  * preferred; the synthesised voice above is only what you hear if a file is
  * missing or has not finished loading.
  */
-const SAMPLE_IDS = [...Object.keys(SOUNDS), 'coins'];
+const SAMPLE_IDS = [...Object.keys(SOUNDS), 'coins', 'knock', 'owlBump'];
 const samples = new Map<string, AudioBuffer>();
 const pending = new Map<string, Promise<void>>();
 
@@ -383,10 +408,23 @@ const load = (id: string): Promise<void> => {
     : fetch(`/sfx/${id}.mp3`)
       .then((res) => (res.ok && (res.headers.get('content-type') ?? '').includes('audio') ? res.arrayBuffer() : null))
       .then((data) => (data ? ac.decodeAudioData(data) : null))
-      .then((buf) => { if (buf) samples.set(id, buf); })
+      .then((buf) => {
+        // A music loop that was dropped while it was still being decoded is let go at once.
+        if (buf && (!isLoop(id) || pending.get(id) === job)) samples.set(id, buf);
+      })
       .catch(() => { /* no recording for this one — the synth covers it */ });
   pending.set(id, job);
   return job;
+};
+
+/**
+ * The two music loops are about 20 MB each once decoded, so only the one that is
+ * playing is kept; the other is decoded again (a fraction of a second) when asked for.
+ */
+const isLoop = (id: string): boolean => id.startsWith('ambience-');
+const dropLoop = (id: string): void => {
+  samples.delete(id);
+  pending.delete(id);
 };
 
 /** Fetches the recordings ahead of the first click. Safe to call more than once. */
@@ -396,7 +434,7 @@ export const preloadSounds = (): void => {
 };
 
 /** Clicks sit well under the background; only the book's own moments are allowed to be big. */
-const LEVEL: Record<string, number> = { bookOpen: 0.75, bookClose: 0.5, page: 0.4, cvScroll: 0.45, engine: 0.32 };
+const LEVEL: Record<string, number> = { bookOpen: 0.75, bookClose: 0.5, page: 0.4, cvScroll: 0.45, engine: 0.32, knock: 0.7, owlBump: 0.9 };
 const CLICK_LEVEL = 0.3;
 
 const playSample = (id: string, at = 0, gain = LEVEL[id] ?? CLICK_LEVEL): boolean => {
@@ -415,6 +453,8 @@ const playSample = (id: string, at = 0, gain = LEVEL[id] ?? CLICK_LEVEL): boolea
 
 let ambience: { src: AudioBufferSourceNode; level: GainNode } | null = null;
 let wantAmbience = false;
+/** Which loop is the room's bed right now: the day tune, or the quieter one for lights-out. */
+let track = 'ambience-day';
 const AMBIENCE_LEVEL = 0.34;
 
 /** Browsers keep audio suspended until the visitor interacts; start for real on the first touch. */
@@ -430,9 +470,10 @@ export const startAmbience = (): void => {
   if (!ac) return;
   window.addEventListener('pointerdown', unlock, { once: true });
   window.addEventListener('keydown', unlock, { once: true });
-  void load('ambience').then(() => {
-    const buf = samples.get('ambience');
-    if (!buf || !master || ambience || !wantAmbience || !enabled) return;
+  const wanted = track;
+  void load(wanted).then(() => {
+    const buf = samples.get(wanted);
+    if (!buf || !master || ambience || !wantAmbience || !enabled || wanted !== track) return;
     const src = ac.createBufferSource();
     src.buffer = buf;
     src.loop = true;
@@ -446,13 +487,40 @@ export const startAmbience = (): void => {
   });
 };
 
-export const stopAmbience = (): void => {
+const fadeOut = (): void => {
   wantAmbience = false;
   if (!ambience || !ctx) return;
   const { src, level } = ambience;
   ambience = null;
   level.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.25);
   src.stop(ctx.currentTime + 1.2);
+};
+
+export const stopAmbience = (): void => {
+  fadeOut();
+  // Leaving the room: the music's memory goes with it (the playing source keeps it until it has faded).
+  dropLoop(track);
+};
+
+/** Cross over to another loop (e.g. when the lights go out). Safe to call before anything plays. */
+export const setAmbienceTrack = (id: string): void => {
+  if (id === track) return;
+  dropLoop(track);
+  track = id;
+  if (!wantAmbience) return;
+  fadeOut();
+  startAmbience();
+};
+
+/** The tab went to the background (or came back): no sound from a page nobody is looking at. */
+export const setAudioAwake = (awake: boolean): void => {
+  if (!ctx) return;
+  if (awake) {
+    // Coming back may itself not count as a gesture on a phone; the next tap finishes the job.
+    if (enabled && ctx.state !== 'running') { void ctx.resume().catch(() => undefined); armUnlock(ctx); }
+  } else if (ctx.state === 'running') {
+    void ctx.suspend();
+  }
 };
 
 /** Pull the background down while something else needs the room (the book being read). */

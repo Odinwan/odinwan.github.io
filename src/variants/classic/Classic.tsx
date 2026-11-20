@@ -32,6 +32,8 @@ interface Project {
   desc: string;
   tech: readonly string[];
   facts?: readonly Fact[];
+  /** A rubber stamp across the card: two lines, e.g. "Top secret" / "coming soon". */
+  stamp?: readonly [string, string];
 }
 
 const SECTION_IDS = ['summary', 'numbers', 'experience', 'projects', 'skills', 'education', 'contact'] as const;
@@ -316,6 +318,7 @@ const Classic: React.FC = () => {
                 <article className="project row" key={p.title}>
                   <p className="kicker">{p.kicker}</p>
                   <div>
+                    {p.stamp && <p className="stamp" aria-label={p.stamp.join(' — ')}><b>{p.stamp[0]}</b><span>{p.stamp[1]}</span></p>}
                     <h3>{p.title}</h3>
                     <p className="desc">{p.desc}</p>
                     {p.facts && p.facts.length > 0 && (

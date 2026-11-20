@@ -10,7 +10,7 @@ export const t = {
       cv: 'CV',
       downloadCv: 'Download CV (PDF)',
       otherCv: 'Other versions:',
-      cvAiFirst: 'AI-first Frontend',
+      cvAiFirst: 'Frontend + AI tooling',
       cvFullstack: 'Fullstack',
       contact: 'Contact',
       share: 'Share',
@@ -37,7 +37,7 @@ export const t = {
       name: 'Vladislav Cupnii',
       role: 'Senior Frontend / Fullstack Developer',
       caption: '8+ years building web products with React, Next.js, TypeScript and Node.js. Swipe up — this CV takes about a minute.',
-      tags: ['#react', '#nextjs', '#typescript', '#ai-first', '#remote'],
+      tags: ['#react', '#nextjs', '#typescript', '#ai-tools', '#remote'],
     },
     stats: {
       title: 'Eight years in one screen',
@@ -51,7 +51,7 @@ export const t = {
     about: {
       title: 'Who I am',
       p1: "Senior Frontend / Fullstack Developer from Moldova. iGaming, business software, travel, hospitality and investment platforms — from a UI library used by 10+ products and a ~340k-line Next.js 16 app to an investment platform I built end to end.",
-      p2: 'Went from Bitrix developer to Technical Lead: architecture, hiring, delivery planning and infrastructure. Today I work AI-first: Claude Code with project context, skills, subagents and MCP is my everyday tool.',
+      p2: 'Went from Bitrix developer to Technical Lead: architecture, hiring, delivery planning and infrastructure. I design the architecture and write the code myself. AI is a tool on top of that, not a substitute: Claude Code with project context, skills, subagents and MCP takes the routine, and I check what it produces with types, tests and my own review.',
       facts: [
         { lbl: 'Education', val: 'Transnistrian State University — B.Sc. Software Engineering, 2013–2017' },
         { lbl: 'Languages', val: 'English B1+ · Russian (native) · Ukrainian' },
@@ -72,7 +72,7 @@ export const t = {
             'Rewrote the frontend twice for new product designs and reworked its architecture (API layer, state, modals, design system); now leading the third redesign. Design-system UI kit from Figma tokens, 164 Storybook stories with a11y checks',
             'Real-time features over WebSocket and SSE, a PixiJS 8 + GSAP animation engine, EVM and Solana wallet integration',
             'Quality: 310 test files (Jest, property-based tests, Playwright e2e and security suite), custom ESLint zone rules, GitLab CI → ArgoCD',
-            'Work AI-first in the team setup for Claude Code: CLAUDE.md with team norms, project skills, a custom subagent and hooks for fragile domains',
+            'Use Claude Code as an assistant inside the team’s setup — CLAUDE.md with team norms, project skills, a custom subagent and hooks for fragile domains; the design decisions and the review of everything that ships are mine',
           ],
         },
         {
@@ -165,7 +165,8 @@ export const t = {
       list: [
         {
           kicker: 'Own product',
-          title: 'Next To You — a city platform, built solo and agent-first',
+          stamp: ['Top secret', 'coming soon to the internet'],
+          title: 'Next To You — a city platform, designed and built solo',
           desc: 'Classifieds and business platform: marketplace, real estate, cars, shops, jobs, business cabinets with roles, and an admin panel. React + MUI client and admin, NestJS backend, then a strangler migration to 9 Go services protected by Playwright parity tests. RAG assistant and AI moderation on a local LLM.',
           tech: ['React', 'NestJS', 'Go', 'PostgreSQL', 'Playwright', 'Claude Code'],
           facts: [
@@ -244,7 +245,7 @@ export const t = {
       cv: 'Резюме',
       downloadCv: 'Скачать резюме (PDF)',
       otherCv: 'Другие версии:',
-      cvAiFirst: 'AI-first Frontend',
+      cvAiFirst: 'Frontend + AI tooling',
       cvFullstack: 'Fullstack',
       contact: 'Связь',
       share: 'Поделиться',
@@ -271,7 +272,7 @@ export const t = {
       name: 'Владислав Купный',
       role: 'Senior Frontend / Fullstack Developer',
       caption: '8+ лет делаю веб-продукты на React, Next.js, TypeScript и Node.js. Листай вверх — это резюме займёт около минуты.',
-      tags: ['#react', '#nextjs', '#typescript', '#ai-first', '#удалёнка'],
+      tags: ['#react', '#nextjs', '#typescript', '#ai-tools', '#удалёнка'],
     },
     stats: {
       title: 'Восемь лет на одном экране',
@@ -285,7 +286,7 @@ export const t = {
     about: {
       title: 'Кто я',
       p1: 'Senior Frontend / Fullstack-разработчик из Молдовы. iGaming, бизнес-софт, travel, гостиничные и инвестиционные платформы — от UI-библиотеки для 10+ продуктов и приложения на Next.js 16 на ~340k строк до инвестиционной платформы, которую построил с нуля.',
-      p2: 'Прошёл путь от Bitrix-разработчика до техлида: архитектура, найм, планирование поставки и инфраструктура. Сейчас работаю AI-first: Claude Code с контекстом проекта, skills, сабагентами и MCP — мой ежедневный инструмент.',
+      p2: 'Прошёл путь от Bitrix-разработчика до техлида: архитектура, найм, планирование поставки и инфраструктура. Архитектуру проектирую и код пишу сам. ИИ для меня — инструмент, а не замена: Claude Code с контекстом проекта, skills, сабагентами и MCP берёт на себя рутину, а результат я проверяю типами, тестами и собственным ревью.',
       facts: [
         { lbl: 'Образование', val: 'ПГУ им. Шевченко — бакалавр, программная инженерия, 2013–2017' },
         { lbl: 'Языки', val: 'Английский B1+ · Русский (родной) · Украинский' },
@@ -306,7 +307,7 @@ export const t = {
             'Дважды полностью переписал фронтенд под новый дизайн продукта и переработал архитектуру (API-слой, стейт, модалки, дизайн-система); сейчас веду третий редизайн. UI-kit по токенам из Figma, 164 Storybook-истории с a11y-проверками',
             'Realtime через WebSocket и SSE, движок анимаций на PixiJS 8 + GSAP, интеграция EVM- и Solana-кошельков',
             'Качество: 310 тест-файлов (Jest, property-based тесты, Playwright e2e и security-набор), свои ESLint-правила зон, GitLab CI → ArgoCD',
-            'Работаю AI-first в командной настройке Claude Code: CLAUDE.md с нормами команды, project skills, свой сабагент и хуки для хрупких доменов',
+            'Использую Claude Code как помощника в командной настройке — CLAUDE.md с нормами команды, project skills, свой сабагент и хуки для хрупких доменов; решения по архитектуре и ревью всего, что уходит в прод, остаются за мной',
           ],
         },
         {
@@ -399,7 +400,8 @@ export const t = {
       list: [
         {
           kicker: 'Свой продукт',
-          title: 'Next To You — городская платформа, сделанная в одиночку и AI-first',
+          stamp: ['Совершенно секретно', 'скоро в интернете'],
+          title: 'Next To You — городская платформа, спроектированная и сделанная в одиночку',
           desc: 'Платформа объявлений и сервисов: барахолка, недвижимость, авто, магазины, вакансии, бизнес-кабинеты с ролями и админка. Клиент и админка на React + MUI, бэкенд на NestJS, затем strangler-миграция на 9 Go-сервисов под защитой Playwright parity-тестов. RAG-ассистент и AI-модерация на локальной LLM.',
           tech: ['React', 'NestJS', 'Go', 'PostgreSQL', 'Playwright', 'Claude Code'],
           facts: [

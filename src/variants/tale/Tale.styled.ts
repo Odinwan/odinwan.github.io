@@ -115,19 +115,22 @@ export const Root = styled.div`
     overflow: hidden;
     clip: rect(0 0 0 0);
     white-space: nowrap;
-    font-family: ${DISPLAY};
-    font-size: 15px;
+    font-family: var(--fairy);
+    font-size: 17px;
     font-weight: 400;
-    letter-spacing: 0.01em;
+    letter-spacing: 0.02em;
     color: var(--gold);
+    text-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
   }
 
   .lang {
     flex: none;
     display: inline-flex;
     padding: 2px;
-    border: 1px solid rgba(253, 241, 214, 0.35);
+    border: 2px solid #2a1608;
     border-radius: 99px;
+    background: rgba(42, 22, 8, 0.72);
+    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
 
     button {
       min-width: 36px;
@@ -143,8 +146,8 @@ export const Root = styled.div`
     }
     button:hover { opacity: 1; }
     button[aria-pressed='true'] {
-      background: var(--cream);
-      color: var(--ink);
+      background: linear-gradient(180deg, #fbe3a0, #e9b44c 55%, #c98f2e);
+      color: #2a1608;
       opacity: 1;
     }
   }
@@ -154,16 +157,19 @@ export const Root = styled.div`
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    padding: 7px 13px;
-    border: 1px solid var(--gold);
-    border-radius: 99px;
-    background: rgba(233, 180, 76, 0.14);
-    color: var(--cream);
-    font: 600 12.5px/1 ${TEXT};
+    padding: 8px 14px;
+    border: 2px solid #2a1608;
+    border-radius: 11px;
+    background: linear-gradient(180deg, #fbe3a0, #e9b44c 55%, #c98f2e);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 3px 0 rgba(42, 22, 8, 0.6), 0 8px 14px rgba(0, 0, 0, 0.3);
+    color: #2a1608;
+    font: 600 13px/1 ${TEXT};
     white-space: nowrap;
     cursor: pointer;
+    transition: transform 0.12s ease, filter 0.12s ease;
   }
-  .close:hover { background: rgba(233, 180, 76, 0.3); }
+  .close:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .close:active { transform: translateY(2px); }
 
   /* phones, when closable: close + language on the first row, designs on the second */
   &.in-scene .top { flex-wrap: wrap; }
@@ -214,6 +220,17 @@ export const Root = styled.div`
       linear-gradient(180deg, var(--paper), var(--paper-2));
   }
   .page.single { border-radius: 10px; }
+  /* A ruled frame round every leaf, as in an old printed storybook. */
+  .page:not(.cover):not(.blank)::before {
+    content: '';
+    position: absolute;
+    inset: 6px;
+    border: 1px solid rgba(176, 132, 62, 0.42);
+    border-radius: 6px;
+    outline: 1px solid rgba(176, 132, 62, 0.2);
+    outline-offset: -4px;
+    pointer-events: none;
+  }
   .page.blank { background-color: var(--paper); }
 
   .running {
@@ -538,6 +555,85 @@ export const Root = styled.div`
     vertical-align: -1px;
   }
 
+  /* A rubber stamp slapped across a project that is not public yet. */
+  .stamp {
+    float: right;
+    margin: 0 0 6px 14px !important;
+    padding: 5px 12px 6px;
+    border: 3px double #b3261c;
+    border-radius: 6px;
+    color: #b3261c;
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    line-height: 1.15;
+    text-align: center;
+    text-transform: uppercase;
+    transform: rotate(-7deg);
+    opacity: 0.88;
+    /* Ink that did not take evenly. */
+    -webkit-mask-image: radial-gradient(circle at 30% 40%, #000 60%, rgba(0, 0, 0, 0.55) 100%), repeating-linear-gradient(33deg, #000 0 5px, rgba(0, 0, 0, 0.7) 5px 6px);
+    mask-image: radial-gradient(circle at 30% 40%, #000 60%, rgba(0, 0, 0, 0.55) 100%), repeating-linear-gradient(33deg, #000 0 5px, rgba(0, 0, 0, 0.7) 5px 6px);
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+  }
+  .stamp b { display: block; font-size: 14px; font-weight: 800; letter-spacing: 0.12em; }
+  .stamp span { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; }
+  /* Narrow phones: beside the heading the stamp leaves it one word per line, so it gets a line of its own. */
+  @media (max-width: 560px) {
+    .stamp { float: none; width: fit-content; margin: 0 0 8px auto !important; }
+  }
+
+  /* the four parts of the book */
+  .part-kicker {
+    margin: 0 0 4px !important;
+    color: var(--tomato);
+    font-family: var(--fairy);
+    font-size: 15px;
+    letter-spacing: 0.08em;
+    text-align: center;
+  }
+  .part-note { margin: 0 0 12px !important; color: #4a382c; font-style: italic; text-align: center; text-wrap: balance; }
+  .opener.part { padding-top: 0; }
+  .toc-part { margin: 10px 0 0; }
+  .toc-part h3 { margin: 0; }
+  .toc-part h3 button {
+    display: block;
+    width: 100%;
+    padding: 5px 4px 3px;
+    border: 0;
+    border-bottom: 1px solid var(--rule);
+    background: none;
+    color: var(--ink);
+    font: 400 16px/1.25 ${DISPLAY};
+    text-align: left;
+    cursor: pointer;
+  }
+  .toc-part h3 button:hover { color: var(--tomato); }
+  .toc-part .lbl { display: block; color: var(--tomato); font: 600 10.5px/1.4 ${TEXT}; letter-spacing: 0.14em; text-transform: uppercase; }
+  .toc-part .toc { margin-top: 2px; }
+  .toc-part .toc button { padding: 3px 4px 3px 12px; font-size: 14.5px; }
+
+  /* the road at a glance: every job, oldest first */
+  .road { margin: 4px 0 0; padding: 0; list-style: none; border-left: 2px solid var(--rule); }
+  .road li { position: relative; }
+  .road li::before { content: ''; position: absolute; left: -6px; top: 13px; width: 10px; height: 10px; border-radius: 50%; background: var(--tomato-bright); box-shadow: 0 0 0 2px var(--paper); }
+  .road button {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+    padding: 6px 6px 6px 16px;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .road button:hover { background: rgba(200, 50, 26, 0.08); }
+  .road .when { color: var(--muted); font-size: 12px; font-variant-numeric: lining-nums; letter-spacing: 0.03em; }
+  .road .where { font-weight: 600; line-height: 1.25; }
+  .road .what { color: #4a382c; font-size: 13.5px; line-height: 1.3; }
+
   /* contents */
   .toc {
     margin: 4px 0 0;
@@ -724,16 +820,16 @@ export const Root = styled.div`
     cursor: pointer;
     transition: background 0.15s ease, opacity 0.15s ease;
   }
-  .round { width: 52px; height: 44px; border-color: var(--gold); background: var(--gold); color: #2a1608; }
-  .round:hover:not(:disabled) { background: #f7d98a !important; }
-  .round:disabled { background: rgba(253, 241, 214, 0.06); color: inherit; border-color: rgba(253, 241, 214, 0.35); }
+  .round { width: 52px; height: 44px; border: 2px solid #2a1608; background: linear-gradient(180deg, #fbe3a0, #e9b44c 55%, #c98f2e); color: #2a1608; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 3px 0 rgba(42, 22, 8, 0.6); }
+  .round:hover:not(:disabled) { background: linear-gradient(180deg, #fff0bd, #f3c665 55%, #d39a38) !important; }
+  .round:disabled { background: rgba(253, 241, 214, 0.06); color: inherit; border: 1px solid rgba(253, 241, 214, 0.35); box-shadow: none; }
   .keys { opacity: 0.7; }
 
   /* Side arrows live beside the book on wide screens; phones use the bar. */
   .side { display: none; }
-  .pill { padding: 0 14px; }
-  .pill svg { color: var(--tomato-bright); }
-  .round:hover:not(:disabled), .pill:hover { background: rgba(253, 241, 214, 0.16); }
+  .pill { padding: 0 14px; border: 2px solid #2a1608; border-radius: 11px; background: linear-gradient(160deg, #fff6dc, #ecd9a8); color: #2a1608; box-shadow: 0 3px 0 rgba(42, 22, 8, 0.6); }
+  .pill svg { color: var(--tomato); }
+  .pill:hover { background: linear-gradient(160deg, #fffbee, #f5e6bd); }
   .round:disabled { opacity: 0.3; cursor: default; }
   .pill[aria-current='page'] { border-color: var(--gold); }
   .count {
@@ -818,13 +914,22 @@ export const Root = styled.div`
       border-radius: 12px;
       background: linear-gradient(160deg, #b8321c, #7d1c0d);
       box-shadow: 0 26px 46px -14px rgba(0, 0, 0, 0.65), 0 4px 10px rgba(0, 0, 0, 0.35);
-      transition: left 0.75s cubic-bezier(0.45, 0.05, 0.3, 1);
     }
-    .book.closed::before { left: calc(50% - 2px); }
+    /* Closed, only the back board lies there; the front one travels with the cover leaf. */
+    .book.half::before { left: calc(50% - 2px); }
+    .leaf.hard::before {
+      content: '';
+      position: absolute;
+      inset: -9px -11px -11px 0;
+      border-radius: 0 12px 12px 0;
+      background: linear-gradient(160deg, #b8321c, #7d1c0d);
+    }
+    .leaf.back.hard::before { inset: -9px 0 -11px -11px; border-radius: 12px 0 0 12px; }
 
     .slot { position: relative; flex: 0 0 50%; height: 100%; }
 
-    .page { padding: 22px 40px 12px; }
+    .page { padding: 24px 40px 14px; }
+    .page:not(.cover):not(.blank)::before { inset: 10px 14px; }
     .page.left {
       padding-right: 46px;
       border-radius: 5px 0 0 5px;
@@ -900,6 +1005,22 @@ export const Root = styled.div`
   @media ${DESK} and (max-height: 620px) {
     .stage { margin: 8px 82px 8px; }
     .page { padding-top: 14px; padding-bottom: 8px; }
+  }
+
+  /* Bigger targets for a thumb. */
+  @media (pointer: coarse) {
+    .lang button { padding: 8px 10px; }
+  }
+
+  /* Phones: the page count must fit whole, so the swipe hint beside it goes. */
+  @media (max-width: 599px) {
+    .keys { display: none; }
+  }
+
+  /* A phone on its side: the page is a strip, so the running head gives its line to the text. */
+  @media (max-width: 899px) and (max-height: 480px) {
+    .running { display: none; }
+    .page { padding-top: 10px; padding-bottom: 4px; }
   }
 
   @media (max-width: 380px) {

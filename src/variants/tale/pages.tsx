@@ -17,6 +17,8 @@ export interface PageDef {
   /** Spoken name of the page (live region) and its running head. */
   title: string;
   cover?: boolean;
+  /** Which part of the book the page belongs to: the running head on the left-hand page. */
+  part?: string;
   render: (ctx: PageCtx) => React.ReactNode;
 }
 
@@ -24,11 +26,21 @@ export interface ChapterDef {
   numeral: string;
   title: string;
   page: number;
+  /** Index of the part it sits in. */
+  part: number;
+}
+
+export interface PartDef {
+  /** "Part two" */
+  label: string;
+  title: string;
+  page: number;
 }
 
 export interface Book {
   pages: PageDef[];
   chapters: ChapterDef[];
+  parts: PartDef[];
   contentsPage: number;
 }
 
@@ -64,14 +76,34 @@ const external = (href: string) => (href.startsWith('http') ? { target: '_blank'
 export const buildBook = (lang: Lang): Book => {
   const c = t[lang];
   const s = S[lang];
-  const pages: PageDef[] = [];
+  const all: PageDef[] = [];
   const chapters: ChapterDef[] = [];
+  const parts: PartDef[] = [];
+  /** Every page pushed is stamped with the part it was pushed under. */
+  const pages = {
+    get length() { return all.length; },
+    push(def: PageDef) { all.push({ ...def, part: def.part ?? parts[parts.length - 1]?.title }); },
+  };
 
+  const part = (title: string): PartDef => {
+    const p = { label: `${s.partWord} ${s.partNames[parts.length] ?? parts.length + 1}`, title, page: pages.length };
+    parts.push(p);
+    return p;
+  };
   const chapter = (title: string): ChapterDef => {
-    const ch = { numeral: roman(chapters.length + 1), title, page: pages.length };
+    const ch = { numeral: roman(chapters.length + 1), title, page: pages.length, part: parts.length - 1 };
     chapters.push(ch);
     return ch;
   };
+  /** The opening of a part: its number, its name, and one plain line about what is inside. */
+  const partHead = (p: PartDef, note?: string) => (
+    <>
+      <p className="part-kicker">{p.label}</p>
+      <h2 className="title center">{p.title}</h2>
+      <Flourish />
+      {note && <p className="part-note">{note}</p>}
+    </>
+  );
   const head = (ch: ChapterDef) => (
     <p className="kicker">{s.chapter} {ch.numeral}</p>
   );
@@ -104,21 +136,46 @@ export const buildBook = (lang: Lang): Book => {
         <h2 className="title center">{s.contents}</h2>
         <Flourish />
         <p className="narr center">{s.contentsNote}</p>
-        <ol className="toc">
-          {chapters.map((ch) => (
-            <li key={ch.page}>
-              <button type="button" onClick={() => go(ch.page)}>
-                <span className="num">{ch.numeral}</span>
-                <span className="name">{ch.title}</span>
-                <span className="dots" aria-hidden="true" />
-                <span className="pg">{ch.page}</span>
+        {parts.map((p, pi) => (
+          <section className="toc-part" key={p.page}>
+            <h3>
+              <button type="button" onClick={() => go(p.page)}>
+                <span className="lbl">{p.label}</span>
+                {p.title}
               </button>
-            </li>
-          ))}
-        </ol>
+            </h3>
+            <ol className="toc">
+              {chapters.filter((ch) => ch.part === pi).map((ch) => (
+                <li key={ch.page}>
+                  <button type="button" onClick={() => go(ch.page)}>
+                    <span className="num">{ch.numeral}</span>
+                    <span className="name">{ch.title}</span>
+                    <span className="dots" aria-hidden="true" />
+                    <span className="pg">{ch.page}</span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </section>
+        ))}
       </>
     ),
   });
+
+  /* ══ part one: the hero ══ */
+  {
+    const p = part(s.parts.hero.title);
+    pages.push({
+      key: 'part-hero',
+      title: p.title,
+      render: () => (
+        <div className="opener part">
+          <Tomato className="figure" prop="wave" crown cape />
+          {partHead(p, s.parts.hero.note)}
+        </div>
+      ),
+    });
+  }
 
   /* ── once upon a time ── */
   {
@@ -179,7 +236,40 @@ export const buildBook = (lang: Lang): Book => {
   const early = chrono.slice(0, earlyCount);
   const later = chrono.slice(earlyCount);
 
+  /* ══ part two: the road ══ */
+  /** Where each later job opens, filled in as the pages are laid out; read when the list is drawn. */
+  const jobPage: number[] = [];
+  let earlyPage = -1;
+  {
+    const p = part(s.parts.road.title);
+    pages.push({
+      key: 'part-road',
+      title: p.title,
+      render: ({ go }) => (
+        <>
+          <div className="opener part">{partHead(p, s.parts.road.note)}</div>
+          <p className="kicker">{s.parts.road.list}</p>
+          <ol className="road">
+            {chrono.map((job, i) => {
+              const target = i < earlyCount ? earlyPage : jobPage[i - earlyCount];
+              return (
+                <li key={`${job.company}-${job.period}`}>
+                  <button type="button" onClick={() => go(target)}>
+                    <span className="when">{job.period}</span>
+                    <span className="where">{job.company}</span>
+                    <span className="what">{job.role}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </>
+      ),
+    });
+  }
+
   if (early.length > 0) {
+    earlyPage = pages.length;
     const ch = chapter(c.experience.earlyTitle);
     pages.push({
       key: 'early',
@@ -205,6 +295,7 @@ export const buildBook = (lang: Lang): Book => {
   }
 
   later.forEach((job, i) => {
+    jobPage[i] = pages.length;
     const ch = chapter(job.company);
     const pose = job.current ? { prop: 'star' as const, crown: true, cape: true } : JOB_POSES[i % JOB_POSES.length];
     const narr = job.current ? s.jobNow : s.jobs[i % s.jobs.length];
@@ -213,7 +304,7 @@ export const buildBook = (lang: Lang): Book => {
       title: `${job.company} — ${job.role}`,
       render: () => (
         <div className="opener">
-          {head(ch)}
+          <p className="kicker">{s.workOf(i + 1, later.length)} · {s.who}</p>
           <Tomato className="figure" {...pose} />
           <h2 className="title center">{job.company}</h2>
           <p className="role">{job.role}</p>
@@ -232,8 +323,9 @@ export const buildBook = (lang: Lang): Book => {
       title: `${job.company} — ${s.deeds}`,
       render: () => (
         <>
-          <p className="kicker">{job.company} · {job.period}</p>
-          <h3 className="subtitle">{s.deeds}</h3>
+          <p className="kicker">{s.workOf(i + 1, later.length)} · {s.did}</p>
+          <h3 className="subtitle">{job.company}</h3>
+          <p className="period">{job.role} · {job.period}</p>
           <ul className="deeds">
             {job.items.map((item) => <li key={item}>{item}</li>)}
           </ul>
@@ -244,6 +336,7 @@ export const buildBook = (lang: Lang): Book => {
 
   /* ── feats ── */
   {
+    const featsPart = part(s.parts.feats.title);
     const ch = chapter(s.feats.title);
     const first = pages.length + 1;
     pages.push({
@@ -251,10 +344,8 @@ export const buildBook = (lang: Lang): Book => {
       title: ch.title,
       render: ({ go }) => (
         <div className="opener">
-          {head(ch)}
           <Tomato className="figure" prop="star" cape />
-          <h2 className="title center">{ch.title}</h2>
-          <Flourish />
+          {partHead(featsPart, s.parts.feats.note)}
           <p className="narr cap">{s.feats.narr}</p>
           <ol className="toc small">
             {c.projects.list.map((p, i) => (
@@ -277,7 +368,8 @@ export const buildBook = (lang: Lang): Book => {
         title: p.title,
         render: () => (
           <>
-            <p className="kicker">{s.feats.ordinals[i] ?? `${s.feats.word} ${i + 1}`} · {p.kicker}</p>
+            <p className="kicker">{s.featOf(i + 1, c.projects.list.length)} · {p.kicker}</p>
+            {'stamp' in p && <p className="stamp" aria-label={p.stamp.join(' — ')}><b>{p.stamp[0]}</b><span>{p.stamp[1]}</span></p>}
             <h3 className="title feat">{p.title}</h3>
             <Flourish className="left" />
             <p>{p.desc}</p>
@@ -302,6 +394,7 @@ export const buildBook = (lang: Lang): Book => {
 
   /* ── the magic chest of tools ── */
   {
+    part(s.parts.tools.title);
     const ch = chapter(s.chest.title);
     const split = Math.ceil(skillGroups.length / 2);
     const groups = (list: typeof skillGroups) => (
@@ -401,5 +494,5 @@ export const buildBook = (lang: Lang): Book => {
     });
   }
 
-  return { pages, chapters, contentsPage };
+  return { pages: all, chapters, parts, contentsPage };
 };

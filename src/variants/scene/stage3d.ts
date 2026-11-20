@@ -22,6 +22,10 @@ export interface Stage {
   close(): Promise<void>;
   /** Stops rendering while the book is being read. */
   setPaused(paused: boolean): void;
+  /** Something turns up: the post owl, a letter on the wind, or a knock — the named one, or any. Ignored while one is under way. */
+  visitor(kind?: 'owl' | 'mail' | 'knock'): void;
+  /** The word on the little sign that hops along above the bug ("Catch it!"), in the visitor's language. */
+  setBugHint(text: string): void;
   dispose(): void;
 }
 
@@ -31,6 +35,8 @@ export interface StageOptions {
   onHover?(id: string | null, x: number, y: number): void;
   /** A prop was clicked; x/y are where its top is on screen, in CSS pixels of the canvas. */
   onPoke?(id: string, x: number, y: number): void;
+  /** Something happened in the room by itself: a letter blew in, it landed, someone knocked. */
+  onEvent?(kind: 'mail' | 'mail-owl' | 'owl-bump' | 'mail-land' | 'knock' | 'lights-on' | 'bug-jar'): void;
   reducedMotion: boolean;
 }
 
@@ -171,7 +177,9 @@ const brushCanvas = (): HTMLCanvasElement => {
 const beamCanvas = (): HTMLCanvasElement => {
   const [c, g] = makeCanvas(64, 256);
   const down = g.createLinearGradient(0, 0, 0, 256);
-  down.addColorStop(0, 'rgba(255,255,255,0.55)');
+  // Fades in below the window head, so the shaft has no hard top edge against the wall.
+  down.addColorStop(0, 'rgba(255,255,255,0)');
+  down.addColorStop(0.22, 'rgba(255,255,255,0.5)');
   down.addColorStop(1, 'rgba(255,255,255,0)');
   g.fillStyle = down;
   g.fillRect(0, 0, 64, 256);
@@ -184,6 +192,163 @@ const beamCanvas = (): HTMLCanvasElement => {
   across.addColorStop(1, 'rgba(0,0,0,0)');
   g.fillStyle = across;
   g.fillRect(0, 0, 64, 256);
+  return c;
+};
+
+/**
+ * A snowy post owl seen head-on, wings spread: painted flat, because it lives outside the glass.
+ * With the letter in its beak, or after it has let go.
+ */
+const owlCanvas = (withLetter: boolean): HTMLCanvasElement => {
+  const [c, g] = makeCanvas(512, 340);
+  const ink = '#2a1810';
+  g.lineJoin = 'round';
+  g.lineCap = 'round';
+  // Wings: rows of feathers, shaded towards the tips.
+  for (const sx of [-1, 1]) {
+    g.save();
+    g.translate(256, 150);
+    g.scale(sx, 1);
+    const wing = g.createLinearGradient(40, 0, 240, 0);
+    wing.addColorStop(0, '#f2f4fa');
+    wing.addColorStop(1, '#b9c2d6');
+    g.beginPath();
+    g.moveTo(44, -14);
+    g.bezierCurveTo(110, -96, 200, -92, 244, -40);
+    g.quadraticCurveTo(222, -22, 232, 6);
+    g.quadraticCurveTo(204, -2, 204, 30);
+    g.quadraticCurveTo(176, 16, 170, 50);
+    g.quadraticCurveTo(144, 32, 132, 64);
+    g.quadraticCurveTo(108, 44, 92, 70);
+    g.quadraticCurveTo(70, 52, 44, 60);
+    g.closePath();
+    g.fillStyle = wing;
+    g.fill();
+    g.lineWidth = 8;
+    g.strokeStyle = ink;
+    g.stroke();
+    g.strokeStyle = '#6a7390';
+    g.lineWidth = 4;
+    for (const [x1, y1, x2, y2] of [[84, -36, 108, 48], [118, -54, 148, 38], [152, -62, 186, 24], [186, -62, 216, 4], [70, -8, 76, 46]]) { g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); }
+    g.restore();
+  }
+  // Tail.
+  g.fillStyle = '#c9d0e0';
+  g.strokeStyle = ink;
+  g.lineWidth = 7;
+  g.beginPath();
+  g.moveTo(226, 260);
+  g.lineTo(256, 322);
+  g.lineTo(286, 260);
+  g.closePath();
+  g.fill();
+  g.stroke();
+  // Body.
+  const body = g.createRadialGradient(236, 120, 20, 256, 170, 130);
+  body.addColorStop(0, '#ffffff');
+  body.addColorStop(1, '#cfd6e6');
+  g.beginPath();
+  g.ellipse(256, 176, 74, 104, 0, 0, Math.PI * 2);
+  g.fillStyle = body;
+  g.fill();
+  g.lineWidth = 8;
+  g.stroke();
+  // Flecks on the breast.
+  g.fillStyle = '#5f6884';
+  for (const [x, y] of [[226, 206], [256, 214], [286, 206], [240, 236], [272, 236], [256, 258], [214, 232], [298, 232]]) {
+    g.beginPath();
+    g.moveTo(x - 7, y - 3);
+    g.quadraticCurveTo(x, y + 8, x + 7, y - 3);
+    g.quadraticCurveTo(x, y + 1, x - 7, y - 3);
+    g.fill();
+  }
+  // Ear tufts and the facial disc.
+  for (const sx of [-1, 1]) {
+    g.beginPath();
+    g.moveTo(256 + sx * 30, 92);
+    g.lineTo(256 + sx * 62, 62);
+    g.lineTo(256 + sx * 58, 104);
+    g.closePath();
+    g.fillStyle = '#e4e9f3';
+    g.fill();
+    g.lineWidth = 6;
+    g.strokeStyle = ink;
+    g.stroke();
+  }
+  g.beginPath();
+  g.ellipse(256, 124, 62, 50, 0, 0, Math.PI * 2);
+  g.fillStyle = '#f7f9fd';
+  g.fill();
+  g.lineWidth = 5;
+  g.strokeStyle = '#8a93ad';
+  g.stroke();
+  // Eyes: wide amber, a little crossed — it has just met a window.
+  for (const sx of [-1, 1]) {
+    g.beginPath();
+    g.arc(256 + sx * 28, 118, 23, 0, Math.PI * 2);
+    g.fillStyle = '#ffb820';
+    g.fill();
+    g.lineWidth = 6;
+    g.strokeStyle = ink;
+    g.stroke();
+    g.beginPath();
+    g.arc(256 + sx * 23, 120, 11, 0, Math.PI * 2);
+    g.fillStyle = ink;
+    g.fill();
+    g.beginPath();
+    g.arc(256 + sx * 27, 114, 3.6, 0, Math.PI * 2);
+    g.fillStyle = '#fff';
+    g.fill();
+  }
+  g.beginPath();
+  g.moveTo(244, 140);
+  g.lineTo(268, 140);
+  g.lineTo(256, 162);
+  g.closePath();
+  g.fillStyle = '#e99a2a';
+  g.fill();
+  g.lineWidth = 5;
+  g.strokeStyle = ink;
+  g.stroke();
+  if (withLetter) {
+    g.save();
+    g.translate(256, 178);
+    g.rotate(-0.14);
+    g.fillStyle = '#f6ead0';
+    g.lineWidth = 6;
+    g.fillRect(-44, -14, 88, 54);
+    g.strokeRect(-44, -14, 88, 54);
+    g.beginPath();
+    g.moveTo(-44, -14);
+    g.lineTo(0, 14);
+    g.lineTo(44, -14);
+    g.stroke();
+    g.beginPath();
+    g.arc(0, 16, 9, 0, Math.PI * 2);
+    g.fillStyle = '#b01c14';
+    g.fill();
+    g.stroke();
+    g.restore();
+  }
+  return c;
+};
+
+/** One long line of green terminal text on a dark screen, made to scroll sideways. */
+const tickerCanvas = (text: string): HTMLCanvasElement => {
+  const [c, g] = makeCanvas(2048, 256);
+  g.fillStyle = '#062010';
+  g.fillRect(0, 0, 2048, 256);
+  g.fillStyle = '#5dff8a';
+  g.font = '800 92px ui-monospace, Menlo, Consolas, monospace';
+  g.textBaseline = 'middle';
+  // Fit the line to the canvas exactly, so the wrap-round has no jump.
+  const scale = 2048 / g.measureText(text).width;
+  g.setTransform(scale, 0, 0, 1, 0, 0);
+  g.fillText(text, 0, 132);
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  // Faint scan lines.
+  g.fillStyle = 'rgba(0, 0, 0, 0.22)';
+  for (let y = 0; y < 256; y += 6) g.fillRect(0, y, 2048, 2);
   return c;
 };
 
@@ -259,7 +424,8 @@ const screenCanvas = (mode: 0 | 1 | 2): HTMLCanvasElement => {
 };
 
 /** A cork board of sticky notes: To do, Doing, Done. */
-const kanbanCanvas = (): HTMLCanvasElement => {
+/** The sprint board. `caught` adds a red BUG card for every bug the visitor has caught. */
+const kanbanCanvas = (caught = 0): HTMLCanvasElement => {
   const [c, g] = makeCanvas(512, 360);
   const r = seeded(61);
   g.fillStyle = '#b98a54';
@@ -299,6 +465,24 @@ const kanbanCanvas = (): HTMLCanvasElement => {
       g.restore();
     }
   });
+  // New work: one card per caught bug, in the free slots; past that, a tally on the last one.
+  const slots = [[0, 3], [1, 2], [1, 3]];
+  for (let n = 0; n < Math.min(caught, slots.length); n++) {
+    const [col, k] = slots[n];
+    g.save();
+    g.translate(30 + col * 168 + 58, 54 + k * 72 + 30);
+    g.rotate(n % 2 ? 0.06 : -0.05);
+    g.fillStyle = 'rgba(40, 20, 5, 0.3)';
+    g.fillRect(-56, -27, 116, 62);
+    g.fillStyle = '#ff6a5a';
+    g.fillRect(-58, -30, 116, 62);
+    g.fillStyle = '#fff';
+    g.font = '800 26px ui-monospace, Menlo, Consolas, monospace';
+    g.textAlign = 'center';
+    const last = n === slots.length - 1 && caught > slots.length;
+    g.fillText(last ? `BUG ×${caught - slots.length + 1}` : `BUG #${n + 1}`, 0, 10);
+    g.restore();
+  }
   return c;
 };
 
@@ -443,6 +627,33 @@ const toadstoolCanvas = (): HTMLCanvasElement => {
   return c;
 };
 
+/** A thin enchanted circle: what appears on the table round the thing under the pointer. */
+const ringCanvas = (): HTMLCanvasElement => {
+  const [c, g] = makeCanvas(256, 256);
+  g.translate(128, 128);
+  g.strokeStyle = 'rgba(255, 214, 120, 0.95)';
+  g.shadowColor = 'rgba(255, 190, 80, 0.9)';
+  g.shadowBlur = 10;
+  g.lineWidth = 3;
+  g.beginPath();
+  g.arc(0, 0, 108, 0, Math.PI * 2);
+  g.stroke();
+  g.lineWidth = 1.5;
+  g.setLineDash([10, 9]);
+  g.beginPath();
+  g.arc(0, 0, 94, 0, Math.PI * 2);
+  g.stroke();
+  g.setLineDash([]);
+  g.fillStyle = 'rgba(255, 236, 170, 1)';
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    g.beginPath();
+    g.arc(Math.cos(a) * 108, Math.sin(a) * 108, i % 2 ? 3 : 5, 0, Math.PI * 2);
+    g.fill();
+  }
+  return c;
+};
+
 const glowCanvas = (inner: string, outer: string): HTMLCanvasElement => {
   const [c, g] = makeCanvas(128, 128);
   const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
@@ -515,7 +726,16 @@ const archShape = (w: number, rectH: number): THREE.Shape => {
 
 export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stage => {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  // Phones, tablets and small machines get a lighter picture: fewer pixels, a smaller candle
+  // shadow, and shadows redrawn every other frame. A normal desktop is drawn in full.
+  const lowPower = (() => {
+    const nav = navigator as Navigator & { deviceMemory?: number };
+    return window.matchMedia('(pointer: coarse)').matches
+      || Math.min(window.screen.width, window.screen.height) < 600
+      || (nav.hardwareConcurrency ?? 8) <= 4
+      || (nav.deviceMemory ?? 8) <= 4;
+  })();
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, lowPower ? 1.5 : 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.NeutralToneMapping;
@@ -528,13 +748,17 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   const band = (x: number, edge: number) => THREE.MathUtils.smoothstep(x, edge - 0.035, edge + 0.035);
   for (let i = 0; i < RAMP; i++) {
     const x = i / (RAMP - 1);
-    rampData[i] = Math.round(255 * (0.36 + 0.22 * band(x, 0.28) + 0.2 * band(x, 0.55) + 0.22 * band(x, 0.82)));
+    // The floor is what a surface facing away from a lamp still gets: low, so shade reads as shade.
+    rampData[i] = Math.round(255 * (0.27 + 0.25 * band(x, 0.28) + 0.23 * band(x, 0.55) + 0.25 * band(x, 0.82)));
   }
   const ramp = new THREE.DataTexture(rampData, RAMP, 1, THREE.RedFormat);
   ramp.minFilter = ramp.magFilter = THREE.LinearFilter;
   ramp.needsUpdate = true;
 
   const brush = colorTex(brushCanvas(), [1, 1]);
+  /** For small flat-coloured things, where the brushwork only reads as dirt. */
+  const plain = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+  plain.needsUpdate = true;
 
   type PaintParams = THREE.MeshToonMaterialParameters & {
     roughness?: number; metalness?: number; clearcoat?: number; clearcoatRoughness?: number;
@@ -573,6 +797,17 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     m.customProgramCacheKey = () => `paint-${edge}-${shine}`;
     return m;
   };
+
+  /**
+   * The house style, which every object on the stage follows — a gouache storybook plate:
+   *  - solids are toon(): banded light, a brush wash, a brown ink outline and a cool rim;
+   *  - one palette: warm browns for wood, brass for metal, iron/indigo enamel for machines,
+   *    parchment for paper, and a few saturated accents (tomato red, leaf green, royal blue);
+   *  - all glass is glassMat(): a tinted, outlined shell with a painted highlight;
+   *  - only pictures (the sky, labels, screens) and light sources are unlit flat colour.
+   */
+  const glassMat = (tint: string, opacity = 0.3) =>
+    toon({ color: tint, transparent: true, opacity, rim: 1, gloss: 1, side: THREE.DoubleSide, depthWrite: false });
 
   const ink = new OutlineEffect(renderer, { defaultThickness: 0.0042, defaultColor: [0.13, 0.07, 0.05], defaultAlpha: 1 });
 
@@ -649,6 +884,8 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   }
 
   const windowGroup = new THREE.Group();
+  /** The left half of the window is a casement leaf, hinged on its outer edge, that swings into the room. The cat sits on the right half, clear of its sweep. */
+  const windowSash = new THREE.Group();
   {
     const w = 0.42;
     const rectH = 0.28;
@@ -676,9 +913,29 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     barV.position.set(0, total / 2, 0.02);
     const barH = new THREE.Mesh(new THREE.BoxGeometry(w, 0.016, 0.02), darkWood);
     barH.position.set(0, rectH * 0.78, 0.02);
-    const sill = new THREE.Mesh(new RoundedBoxGeometry(w + 0.16, 0.03, 0.1, 2, 0.008), darkWood);
-    sill.position.set(0, -0.04, 0.04);
-    windowGroup.add(barV, barH, sill);
+    const sill = new THREE.Mesh(new RoundedBoxGeometry(w + 0.16, 0.03, 0.17, 2, 0.008), darkWood);
+    sill.position.set(0, -0.04, 0.075);
+    // The mullion and the right-hand bar are fixed; only the left leaf moves.
+    barH.scale.x = 0.5;
+    barH.position.x = w / 4;
+    windowSash.position.set(-w / 2, 0, 0.02);
+    const leafBar = new THREE.Mesh(new THREE.BoxGeometry(w / 2 - 0.014, 0.016, 0.018), darkWood);
+    leafBar.position.set(w / 4 - 0.007, rectH * 0.78, 0);
+    const leafStile = new THREE.Mesh(new THREE.BoxGeometry(0.012, total - 0.014, 0.016), darkWood);
+    leafStile.position.set(w / 2 - 0.016, total / 2, 0);
+    const pane = new THREE.Shape();
+    pane.moveTo(0, 0);
+    pane.lineTo(w / 2 - 0.01, 0);
+    pane.lineTo(w / 2 - 0.01, total - 0.004);
+    pane.absarc(w / 2, rectH, w / 2 - 0.004, Math.PI / 2 + 0.05, Math.PI, false);
+    pane.lineTo(0, 0);
+    const leafGlass = new THREE.Mesh(
+      new THREE.ShapeGeometry(pane, 20),
+      new THREE.MeshBasicMaterial({ color: '#cfe0ff', transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide, fog: false }),
+    );
+    leafGlass.material.userData.outlineParameters = { visible: false };
+    windowSash.add(leafBar, leafStile, leafGlass);
+    windowGroup.add(barV, barH, windowSash, sill);
   }
   windowGroup.position.set(-0.85, 0.36, -1.29);
   scene.add(shadow(windowGroup, false, true));
@@ -904,7 +1161,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   const candleLight = new THREE.PointLight('#ffb56a', 1, 7, 1);
   candleLight.position.set(CANDLE.x, flameY + 0.03, CANDLE.z);
   candleLight.castShadow = true;
-  candleLight.shadow.mapSize.set(2048, 2048);
+  candleLight.shadow.mapSize.set(lowPower ? 1024 : 2048, lowPower ? 1024 : 2048);
   candleLight.shadow.camera.near = 0.03;
   candleLight.shadow.camera.far = 6;
   candleLight.shadow.bias = -0.0025;
@@ -927,17 +1184,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   const liquid = new THREE.Mesh(new THREE.LatheGeometry(liquidProfile, 40), liquidMat);
   const glass = new THREE.Mesh(
     new THREE.LatheGeometry(bottleProfile, 48),
-    toon({
-      color: '#ffffff',
-      transparent: true,
-      opacity: 0.16,
-      outline: false,
-      roughness: 0.04,
-      clearcoat: 1,
-      clearcoatRoughness: 0.05,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    }),
+    glassMat('#d9fff0', 0.34),
   );
   const cork = new THREE.Mesh(
     new THREE.CylinderGeometry(0.0135, 0.0115, 0.02, 20),
@@ -1045,40 +1292,231 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   };
   stack.add(stackBook(0.2, 0.036, 0.27, '#23463a', 0, 0.1), stackBook(0.17, 0.03, 0.235, '#27325c', 0.036, -0.22));
 
+  // The hero himself, after the character sheet: a stout tomato with a mane of dark hair tied back in a
+  // ponytail, a full beard and moustache, heavy brows, a wine-red cape with a gold clasp, and boots.
+  // He stands on the books; poke him and he hops.
   const tomato = new THREE.Group();
-  const tomatoBody = new THREE.Mesh(
-    new THREE.SphereGeometry(0.036, 40, 28),
-    toon({ color: '#d92e18', roughness: 0.28, clearcoat: 0.8, clearcoatRoughness: 0.2 }),
-  );
+  const blob = (r: number, mat: THREE.Material, x: number, y: number, z: number, sx = 1, sy = 1, sz = 1) => {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(r, 24, 18), mat);
+    m.position.set(x, y, z);
+    m.scale.set(sx, sy, sz);
+    return m;
+  };
+  const skin = toon({ color: '#e5472c', gloss: 0.4, rim: 0.5 });
+  const skinShade = toon({ color: '#c2381f', rim: 0.15 });
+  const hairMat = toon({ color: '#5a2e18', rim: 0.12, emissive: '#3a1608', emissiveIntensity: 0.7 });
+  const hairLight = toon({ color: '#8a5230', rim: 0.1, emissive: '#3a1608', emissiveIntensity: 0.6 });
+  const capeMat = toon({ color: '#8a2a3c', rim: 0.5, side: THREE.DoubleSide });
+  const capeDark = toon({ color: '#5c1728', rim: 0.2, side: THREE.DoubleSide });
+  const bootMat = toon({ color: '#6b3a1c', gloss: 0.3 });
+  const soleMat = toon({ color: '#2a1810', rim: 0 });
+  const leaf = toon({ color: '#4c9a48', roughness: 0.6, side: THREE.DoubleSide });
+  const BY = 0.052; // centre of the body
+  /** What he wears by day and takes off under the hood: the hair, the cape, the leaves. */
+  const heroDay = new THREE.Group();
+
+  // The body: a real tomato, a little wider than tall, with soft lobes.
+  const tomatoBody = new THREE.Mesh(new THREE.SphereGeometry(0.04, 44, 30), skin);
   {
-    // Gentle lobes and a dimple on top make it a tomato rather than a ball.
-    const p = tomatoBody.geometry.attributes.position;
-    for (let i = 0; i < p.count; i++) {
-      const x = p.getX(i);
-      const y = p.getY(i);
-      const z = p.getZ(i);
-      const a = Math.atan2(z, x);
-      const lobe = 1 + 0.035 * Math.cos(a * 5) * (1 - Math.abs(y) / 0.036);
-      const top = y > 0 ? 1 - 0.12 * Math.pow(y / 0.036, 6) : 1;
-      p.setXYZ(i, x * lobe, y * 0.84 * top, z * lobe);
+    const pos = tomatoBody.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      const z = pos.getZ(i);
+      const lobe = 1 + 0.028 * Math.cos(Math.atan2(z, x) * 5 + 0.6) * (1 - Math.abs(y) / 0.04);
+      pos.setXYZ(i, x * lobe * 1.06, y * 0.97, z * lobe);
     }
     tomatoBody.geometry.computeVertexNormals();
   }
+  tomatoBody.position.y = BY;
   tomato.add(tomatoBody);
-  const leaf = toon({ color: '#3f8a3a', roughness: 0.6, side: THREE.DoubleSide });
-  for (let i = 0; i < 5; i++) {
-    const sepal = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.026, 6), leaf);
-    sepal.scale.z = 0.35;
-    const a = (i / 5) * Math.PI * 2;
-    sepal.position.set(Math.cos(a) * 0.011, 0.0275, Math.sin(a) * 0.011);
-    sepal.rotation.set(0, -a, -Math.PI / 2 + 0.5, 'YXZ');
-    tomato.add(sepal);
+
+  // Boots with soles, short arms, round hands.
+  for (const sx of [-1, 1]) {
+    const sole = new THREE.Mesh(new THREE.CylinderGeometry(0.0135, 0.0145, 0.0045, 16), soleMat);
+    sole.position.set(sx * 0.0175, 0.0022, 0.009);
+    sole.scale.z = 1.45;
+    const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.0078, 0.012, 4, 10), skin);
+    arm.position.set(sx * 0.0455, 0.041, 0.008);
+    arm.rotation.z = sx * 0.95;
+    tomato.add(
+      blob(0.0138, bootMat, sx * 0.0175, 0.0105, 0.009, 1, 0.78, 1.45), sole,
+      arm, blob(0.0108, skin, sx * 0.0535, 0.0335, 0.012),
+    );
   }
-  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.0022, 0.003, 0.014, 8), leaf);
-  stem.position.y = 0.034;
-  stem.rotation.z = 0.25;
-  tomato.add(stem);
-  tomato.position.set(0.015, 0.066 + 0.03, 0.01);
+
+  // The cape: it hangs from the shoulders in folds, under a rolled collar, pinned with a gold clasp.
+  const capeGeo = new THREE.LatheGeometry(
+    [[0.039, 0.033], [0.0415, 0.027], [0.0455, 0.019], [0.05, 0.011], [0.054, 0.005]].map(([x, y]) => new THREE.Vector2(x, y)),
+    72,
+  );
+  {
+    const pos = capeGeo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      const z = pos.getZ(i);
+      const fall = (0.033 - y) / 0.028; // 0 at the collar, 1 at the hem
+      const fold = 1 + 0.075 * fall * Math.sin(Math.atan2(z, x) * 9);
+      pos.setXYZ(i, x * fold, y, z * fold);
+    }
+    capeGeo.computeVertexNormals();
+  }
+  const mantle = new THREE.Mesh(capeGeo, capeMat);
+  const collar = new THREE.Mesh(new THREE.TorusGeometry(0.0388, 0.0048, 10, 36), capeDark);
+  collar.rotation.x = Math.PI / 2;
+  collar.position.y = 0.0325;
+  const clasp = new THREE.Mesh(new THREE.CylinderGeometry(0.0088, 0.0088, 0.004, 20), gold);
+  clasp.rotation.x = Math.PI / 2;
+  clasp.rotation.x = Math.PI / 2 - 0.35;
+  clasp.position.set(0, 0.0275, 0.0445);
+  heroDay.add(mantle, collar, clasp, blob(0.0048, gold, 0, 0.0282, 0.0462, 1, 1, 0.5));
+
+  // Hair and beard are each ONE smooth shell wrapped round the body, cut to shape — not a heap of lumps,
+  // so the ink line draws a clean hairline and a clean beard instead of a tangle.
+  // `keep(az, y)` says where the shell exists (az: 0 = straight ahead, ±π = the back; y from the body's
+  // centre); elsewhere it is tucked inside the body. `swell` pushes it out to give it volume.
+  const heroShell = (radius: number, mat: THREE.Material, keep: (az: number, y: number) => boolean, swell: (az: number, y: number) => number) => {
+    const geo = new THREE.SphereGeometry(radius, 96, 64);
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      const z = pos.getZ(i);
+      const az = Math.atan2(x, z);
+      const k = keep(az, y) ? 1 + swell(az, y) : 0.62;
+      pos.setXYZ(i, x * k, y * k, z * k);
+    }
+    geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, mat);
+    m.position.y = BY;
+    return m;
+  };
+  const step = THREE.MathUtils.smoothstep;
+  // A neat cut: short on top and at the sides, clear of the forehead and the ears, longer only at the
+  // back where it is drawn into the ponytail.
+  const hairline = (az: number) => {
+    const front = Math.max(0, Math.cos(az));       // 1 straight ahead … 0 at the sides and behind
+    const back = Math.max(0, -Math.cos(az));       // 1 straight behind
+    return 0.018 + 0.017 * Math.pow(front, 0.8) - 0.03 * Math.pow(back, 1.3);
+  };
+  const hairShell = heroShell(0.0438, hairMat,
+    (az, y) => y > hairline(az),
+    (az, y) => 0.03                                                   // close-cropped
+      + 0.05 * step(y, 0.024, 0.04)                                   // a little height on top
+      - 0.04 * Math.exp(-((az / 0.16) ** 2)) * step(y, 0.03, 0.04)    // a centre parting
+      + 0.012 * Math.sin(az * 6 + y * 80));                           // combed back
+  heroDay.add(hairShell);
+  // A lighter sweep either side of the parting.
+  for (const sx of [-1, 1]) {
+    const shine = blob(0.006, hairLight, sx * 0.019, BY + 0.0445, 0.006, 1.9, 0.3, 1.2);
+    shine.rotation.z = -sx * 0.5;
+    heroDay.add(shine);
+  }
+  // Gathered at the nape into a ponytail through a gold ring.
+  const hairRing = new THREE.Mesh(new THREE.TorusGeometry(0.009, 0.0032, 8, 22), gold);
+  hairRing.position.set(0, BY + 0.004, -0.047);
+  hairRing.rotation.x = 0.55;
+  const ponytail = new THREE.Mesh(
+    new THREE.LatheGeometry([[0, 0], [0.006, -0.003], [0.0105, -0.013], [0.0095, -0.028], [0.005, -0.04], [0, -0.046]].map(([x, y]) => new THREE.Vector2(x, y)), 20),
+    hairMat,
+  );
+  ponytail.position.set(0, BY + 0.004, -0.049);
+  ponytail.rotation.x = -0.32;
+  heroDay.add(hairRing, ponytail);
+
+  // The beard: trimmed close along the jaw, a little fuller at the chin, with a clean edge.
+  const BEARD_HALF = 1.05;
+  const beardShell = heroShell(0.0436, hairMat,
+    (az, y) => Math.abs(az) < BEARD_HALF
+      && y < -0.004 + 0.02 * Math.pow(Math.abs(az) / BEARD_HALF, 2.6)
+      && y > -0.031 + 0.02 * Math.pow(Math.abs(az) / BEARD_HALF, 2.2),
+    (az, y) => 0.03 + 0.055 * Math.exp(-((az / 0.55) ** 2)) * step(-y, 0.006, 0.028));
+  tomato.add(beardShell);
+
+  // The face: steady eyes under heavy brows, a nose, a moustache, a smile in the beard.
+  const eyeWhite = toon({ color: '#fff3dc', rim: 0, map: plain });
+  const irisMat = new THREE.MeshBasicMaterial({ color: '#5a2e12' });
+  const pupilMat = new THREE.MeshBasicMaterial({ color: '#1d1210' });
+  const glintMat = new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false, fog: false });
+  for (const sx of [-1, 1]) {
+    const brow = new THREE.Mesh(new RoundedBoxGeometry(0.021, 0.0072, 0.0064, 2, 0.0026), hairMat);
+    brow.position.set(sx * 0.015, BY + 0.0312, 0.0296);
+    brow.rotation.set(0, -sx * 0.28, sx * 0.34);
+    const tash = blob(0.008, hairMat, sx * 0.0092, BY + 0.0035, 0.0425, 1.6, 0.55, 0.7);
+    tash.rotation.z = -sx * 0.36;
+    tomato.add(
+      blob(0.0098, eyeWhite, sx * 0.015, BY + 0.0188, 0.0335, 1.2, 0.96, 0.5),
+      blob(0.0056, irisMat, sx * 0.0132, BY + 0.0184, 0.0384, 1, 1, 0.45),
+      blob(0.003, pupilMat, sx * 0.013, BY + 0.0184, 0.0406, 1, 1, 0.45),
+      blob(0.0014, glintMat, sx * 0.013 + 0.0021, BY + 0.0208, 0.0417),
+      // A heavy upper lid: the look of someone who has seen this bug before.
+      blob(0.01, skinShade, sx * 0.015, BY + 0.0258, 0.0325, 1.22, 0.5, 0.52),
+      brow, tash,
+    );
+  }
+  const smile = new THREE.Mesh(new THREE.TorusGeometry(0.0046, 0.0011, 6, 14, Math.PI), new THREE.MeshBasicMaterial({ color: '#f6c9a8' }));
+  smile.position.set(0, BY - 0.0105, 0.0492);
+  smile.rotation.z = Math.PI;
+  // No drawn mouth: under a moustache like that, the beard does the smiling.
+  smile.visible = false;
+  tomato.add(blob(0.0072, skin, 0, BY + 0.0115, 0.0425, 1, 0.92, 1), smile);
+
+  // The green star and its stalk on top.
+  for (let i = 0; i < 6; i++) {
+    const sepal = new THREE.Mesh(new THREE.ConeGeometry(0.0088, 0.036, 6), leaf);
+    sepal.scale.z = 0.36;
+    const ang = (i / 6) * Math.PI * 2 + 0.3;
+    sepal.position.set(Math.cos(ang) * 0.014, BY + 0.0445, Math.sin(ang) * 0.014);
+    sepal.rotation.set(0, -ang, -Math.PI / 2 + 0.26, 'YXZ');
+    heroDay.add(sepal);
+  }
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.0035, 0.0048, 0.024, 8), leaf);
+  stem.position.set(0.002, BY + 0.056, 0);
+  stem.rotation.z = 0.22;
+  tomato.add(heroDay, stem);
+
+  // Lights out, he is a hacker: a black hood and cloak thrown on over everything, and eyes that glow.
+  // A little self-light, or black cloth on a black room would simply vanish.
+  const hoodMat = toon({ color: '#1d1b2a', rim: 0.6, emissive: '#232a4a', emissiveIntensity: 1, side: THREE.DoubleSide });
+  const hoodTrim = new THREE.MeshBasicMaterial({ color: '#5dff8a', toneMapped: false, fog: false });
+  const heroHood = new THREE.Group();
+  const hoodShell = new THREE.Mesh(new THREE.SphereGeometry(0.0462, 28, 18, Math.PI * 1.5 - 2.3, 4.6, 0, 2.2), hoodMat);
+  hoodShell.position.y = BY;
+  // The point of the hood, flopped back.
+  const hoodPeak = new THREE.Mesh(new THREE.ConeGeometry(0.026, 0.05, 14), hoodMat);
+  hoodPeak.position.set(0, BY + 0.05, -0.02);
+  hoodPeak.rotation.x = -0.85;
+  const hoodCloak = new THREE.Mesh(new THREE.CylinderGeometry(0.0445, 0.053, 0.042, 28, 1, true), hoodMat);
+  hoodCloak.position.y = 0.026;
+  // The brim of the hood, shading the brow.
+  const hoodBrim = new THREE.Mesh(new THREE.TorusGeometry(0.033, 0.0075, 10, 28, Math.PI), hoodMat);
+  hoodBrim.position.set(0, BY + 0.024, 0.026);
+  hoodBrim.rotation.x = -0.3;
+  // What makes it a hoodie: a glowing edge to the hood, a zip down the front, two drawstrings.
+  const hoodEdge = new THREE.Mesh(new THREE.TorusGeometry(0.0335, 0.0018, 6, 28, Math.PI), hoodTrim);
+  hoodEdge.position.set(0, BY + 0.024, 0.0335);
+  hoodEdge.rotation.x = -0.3;
+  const hoodZip = new THREE.Mesh(new THREE.BoxGeometry(0.0022, 0.036, 0.002), hoodTrim);
+  hoodZip.position.set(0, 0.026, 0.0495);
+  hoodZip.rotation.x = -0.2;
+  heroHood.add(hoodShell, hoodPeak, hoodCloak, hoodBrim, hoodEdge, hoodZip);
+  for (const sx of [-1, 1]) {
+    const string = new THREE.Mesh(new THREE.CylinderGeometry(0.0013, 0.0013, 0.026, 6), new THREE.MeshBasicMaterial({ color: '#e8e4f0', toneMapped: false, fog: false }));
+    string.position.set(sx * 0.012, 0.036, 0.0485);
+    string.rotation.z = sx * 0.12;
+    const tip = blob(0.0028, hoodTrim, sx * 0.0136, 0.023, 0.05);
+    heroHood.add(string, tip);
+  }
+  heroHood.visible = false;
+  const heroGlow = new THREE.Group();
+  const heroEyeMat = new THREE.MeshBasicMaterial({ color: '#6dff9a', toneMapped: false, fog: false });
+  for (const sx of [-1, 1]) heroGlow.add(blob(0.0078, heroEyeMat, sx * 0.0145, BY + 0.0192, 0.0372, 1.2, 0.6, 0.4));
+  heroGlow.visible = false;
+  tomato.add(heroHood, heroGlow);
+  tomato.scale.setScalar(1.55);
+  tomato.rotation.y = 0.35;
+  tomato.position.set(0.015, 0.066, 0.01);
   stack.add(tomato);
   stack.position.set(-0.3, 0, -0.58);
   scene.add(shadow(stack));
@@ -1129,7 +1567,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
 
   // Hourglass.
   const hourglass = new THREE.Group();
-  const sandGlass = toon({ color: '#eaf6ff', transparent: true, opacity: 0.4, depthWrite: false });
+  const sandGlass = glassMat('#eaf6ff', 0.4);
   for (const dir of [1, -1]) {
     const bulb = new THREE.Mesh(new THREE.ConeGeometry(0.021, 0.036, 20), sandGlass);
     bulb.rotation.z = dir === 1 ? Math.PI : 0;
@@ -1170,7 +1608,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   const canvasPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.165, 0.225), portraitMat);
   canvasPlane.position.z = 0.0125;
   portrait.add(canvasPlane);
-  portrait.position.set(-0.18, 0.66, -1.28);
+  portrait.position.set(-0.18, 0.55, -1.28);
   portrait.rotation.z = 0.03;
   scene.add(shadow(portrait, false, true));
 
@@ -1180,7 +1618,11 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   const lanternGlow = new THREE.MeshBasicMaterial({ color: '#ffc56a', toneMapped: false, fog: false });
   lantern.add(box(0.062, 0.095, 0.062, lanternGlow, 0, -0.06, 0));
   for (const [x, z] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) lantern.add(box(0.008, 0.105, 0.008, iron, x * 0.033, -0.06, z * 0.033));
-  lantern.add(box(0.085, 0.01, 0.085, iron, 0, -0.112, 0));
+  lantern.add(box(0.085, 0.01, 0.085, iron, 0, -0.112, 0), box(0.066, 0.006, 0.066, iron, 0, -0.06, 0), box(0.074, 0.008, 0.074, iron, 0, -0.01, 0));
+  for (const [x, z] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) lantern.add(box(0.006, 0.1, 0.006, iron, x * 0.032, -0.06, z * 0.032));
+  const lanternRing = new THREE.Mesh(new THREE.TorusGeometry(0.012, 0.0028, 8, 20), iron);
+  lanternRing.position.y = 0.042;
+  lantern.add(lanternRing);
   const lanternCap = new THREE.Mesh(new THREE.ConeGeometry(0.058, 0.04, 4), iron);
   lanternCap.rotation.y = Math.PI / 4;
   lanternCap.position.y = 0.012;
@@ -1230,17 +1672,33 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   const chestWood = toon({ color: '#8a4f24' });
   chest.add(new THREE.Mesh(new RoundedBoxGeometry(0.21, 0.09, 0.13, 2, 0.006), chestWood));
   for (const x of [-0.07, 0.07]) chest.add(box(0.018, 0.094, 0.134, brass, x, 0, 0));
-  chest.add(box(0.03, 0.036, 0.008, brass, 0, 0.02, 0.068));
+  chest.add(box(0.03, 0.036, 0.008, brass, 0, 0.02, 0.068), box(0.006, 0.013, 0.002, toon({ color: '#1c1210', rim: 0 }), 0, 0.017, 0.0725));
+  const groove = toon({ color: '#4a2812', rim: 0 });
+  const stud = (x: number, y: number, z: number, parent: THREE.Object3D) => {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(0.0048, 12, 8), gold);
+    m.position.set(x, y, z);
+    parent.add(m);
+  };
+  for (const y of [-0.014, 0.016]) chest.add(box(0.2, 0.0028, 0.002, groove, 0, y, 0.0656));
+  for (const x of [-0.07, 0.07]) for (const y of [-0.03, 0.0, 0.03]) stud(x, y, 0.068, chest);
+  for (const x of [-0.096, 0.096]) chest.add(box(0.024, 0.024, 0.024, brass, x, -0.035, 0.055));
   const chestLid = new THREE.Group();
   const lidShell = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.21, 24, 1, false, 0, Math.PI), chestWood);
   lidShell.rotation.z = Math.PI / 2;
   lidShell.position.z = 0.065;
-  chestLid.add(lidShell);
+  // The lid is closed underneath, so nothing shows through it when it stands open.
+  chestLid.add(lidShell, box(0.206, 0.004, 0.126, toon({ color: '#5a3016', rim: 0 }), 0, 0.001, 0.065));
   for (const x of [-0.07, 0.07]) {
     const band = new THREE.Mesh(new THREE.CylinderGeometry(0.067, 0.067, 0.018, 24, 1, false, 0, Math.PI), brass);
     band.rotation.z = Math.PI / 2;
     band.position.set(x, 0, 0.065);
     chestLid.add(band);
+  }
+  for (const x of [-0.07, 0.07]) for (const a of [0.5, 1.2, 1.9, 2.6]) stud(x, Math.sin(a) * 0.068, 0.065 + Math.cos(a) * 0.068, chestLid);
+  for (const a of [0.75, 1.57, 2.4]) {
+    const plank = box(0.202, 0.0028, 0.003, groove, 0, Math.sin(a) * 0.0655, 0.065 + Math.cos(a) * 0.0655);
+    plank.rotation.x = Math.PI / 2 - a;
+    chestLid.add(plank);
   }
   chestLid.position.set(0, 0.045, -0.065);
   const treasure = new THREE.Mesh(
@@ -1278,12 +1736,25 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   hatBand.rotation.x = Math.PI / 2;
   hatBand.position.y = 0.018;
   hat.add(brim, crownCone, hatBand);
+  const hatTip = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.075, 16), felt);
+  hatTip.position.set(0.046, 0.212, 0);
+  hatTip.rotation.z = -1.05;
+  hat.add(hatTip, box(0.03, 0.024, 0.006, gold, 0, 0.018, 0.066), box(0.016, 0.011, 0.007, felt, 0, 0.018, 0.0665));
+  for (const [a, y] of [[0.5, 0.06], [1.5, 0.1], [2.5, 0.05], [-0.4, 0.12], [-1.3, 0.075], [3.3, 0.13]]) {
+    const r = 0.066 * (1 - (y - 0.007) / 0.21) + 0.001;
+    const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.0075), gold);
+    star.position.set(Math.sin(a) * r + 0.008 - y * 0.12, y, Math.cos(a) * r);
+    star.scale.z = 0.4;
+    star.rotation.y = a;
+    hat.add(star);
+  }
   hat.scale.setScalar(0.72);
-  hat.position.set(0.03, 0.064, 0.062);
+  // Rests on the lid, but belongs to the chest: when the lid swings up the hat floats clear of it.
+  hat.position.set(0.03, 0.109, -0.003);
   hat.rotation.y = 0.4;
   const hatY = hat.position.y;
   shadow(hat);
-  chestLid.add(hat);
+  chest.add(hat);
 
   // Glowing crystals.
   const crystals = new THREE.Group();
@@ -1314,7 +1785,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
 
   // A ginger cat sitting on the windowsill, tail hanging over the edge.
   const cat = new THREE.Group();
-  const ginger = toon({ color: '#ee8a2c', rim: 0.9 });
+  const ginger = toon({ color: '#f07f1c', rim: 0.35, emissive: '#7a3206', emissiveIntensity: 0.5 });
   const creamFur = toon({ color: '#fff1dc', rim: 0.6 });
   const earPink = toon({ color: '#ff9aa8', rim: 0 });
   const ball = (r: number, mat: THREE.Material, x: number, y: number, z: number, sx = 1, sy = 1, sz = 1) => {
@@ -1323,37 +1794,58 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     m.scale.set(sx, sy, sz);
     return m;
   };
-  const catBody = ball(0.05, ginger, 0, 0.058, 0, 0.95, 1.2, 0.9);
-  cat.add(
-    catBody,
-    ball(0.03, creamFur, 0, 0.06, 0.032, 0.85, 1.25, 0.6),
-    ball(0.03, ginger, -0.036, 0.028, 0.008), ball(0.03, ginger, 0.036, 0.028, 0.008),
-    ball(0.013, creamFur, -0.016, 0.012, 0.046, 1, 0.8, 1.3), ball(0.013, creamFur, 0.016, 0.012, 0.046, 1, 0.8, 1.3),
+  // A pear-shaped sitting body, front legs planted, haunches either side.
+  const catBody = new THREE.Mesh(
+    new THREE.LatheGeometry(
+      [[0, 0], [0.04, 0.002], [0.052, 0.022], [0.05, 0.05], [0.038, 0.082], [0.026, 0.104], [0, 0.112]].map(([x, y]) => new THREE.Vector2(x, y)),
+      28,
+    ),
+    ginger,
   );
-  // Stripes across the back.
+  catBody.scale.z = 0.86;
+  cat.add(catBody, ball(0.026, creamFur, 0, 0.064, 0.026, 0.8, 1.35, 0.55));
   const stripe = toon({ color: '#b85a12', rim: 0 });
-  for (const y of [0.07, 0.09, 0.108]) {
-    const band = new THREE.Mesh(new THREE.TorusGeometry(0.046 - (y - 0.07) * 0.35, 0.0035, 6, 20, Math.PI), stripe);
-    band.rotation.set(Math.PI / 2, 0, Math.PI);
-    band.position.set(0, y, -0.004);
-    cat.add(band);
+  for (const sx of [-1, 1]) {
+    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.0105, 0.04, 4, 10), ginger);
+    leg.position.set(sx * 0.016, 0.034, 0.038);
+    cat.add(
+      ball(0.026, ginger, sx * 0.04, 0.024, 0.004, 1, 1, 1.1),
+      leg,
+      ball(0.0125, creamFur, sx * 0.016, 0.01, 0.047, 1.05, 0.75, 1.3),
+    );
   }
+  // Tabby flanks, and a red collar with a little bell.
+  for (const sx of [-1, 1]) {
+    for (const [y, r] of [[0.04, 0.05], [0.058, 0.047], [0.076, 0.04]]) cat.add(ball(0.008, stripe, sx * (r - 0.0015), y, 0.006, 0.3, 0.5, 1.7));
+  }
+  const catCollar = new THREE.Mesh(new THREE.TorusGeometry(0.0265, 0.0042, 8, 24), toon({ color: '#c8281e', gloss: 0.4 }));
+  catCollar.rotation.x = Math.PI / 2;
+  catCollar.position.set(0, 0.105, 0.004);
+  catCollar.scale.y = 0.9;
+  cat.add(catCollar, ball(0.0072, gold, 0, 0.098, 0.031));
+  // A big round head: that is where a storybook cat keeps its charm.
   const catHead = new THREE.Group();
   catHead.add(
-    ball(0.04, ginger, 0, 0, 0, 1.08, 0.92, 0.95),
-    ball(0.016, creamFur, -0.009, -0.012, 0.031, 1.1, 0.8, 0.8), ball(0.016, creamFur, 0.009, -0.012, 0.031, 1.1, 0.8, 0.8),
-    ball(0.0042, earPink, 0, -0.004, 0.045),
+    ball(0.046, ginger, 0, 0, 0, 1.1, 0.94, 0.95),
+    ball(0.016, creamFur, -0.01, -0.014, 0.034, 1.1, 0.8, 0.8), ball(0.016, creamFur, 0.01, -0.014, 0.034, 1.1, 0.8, 0.8),
+    ball(0.011, creamFur, 0, -0.025, 0.03),
+    ball(0.005, earPink, 0, -0.005, 0.048, 1.2, 0.8, 1),
   );
+  // Tabby marks on the forehead.
+  for (const dx of [-0.012, 0, 0.012]) catHead.add(ball(0.006, stripe, dx, 0.031 - Math.abs(dx) * 0.2, 0.03, 0.45, 1.3, 0.4));
   for (const sx of [-1, 1]) {
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.017, 0.032, 4), ginger);
-    ear.position.set(sx * 0.025, 0.036, 0);
-    ear.rotation.set(0, Math.PI / 4, -sx * 0.28);
-    const inner = new THREE.Mesh(new THREE.ConeGeometry(0.009, 0.02, 4), earPink);
-    inner.position.set(sx * 0.025, 0.034, 0.006);
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.04, 4), ginger);
+    ear.position.set(sx * 0.03, 0.04, 0);
+    ear.rotation.set(0, Math.PI / 4, -sx * 0.3);
+    const inner = new THREE.Mesh(new THREE.ConeGeometry(0.011, 0.026, 4), earPink);
+    inner.position.set(sx * 0.03, 0.038, 0.007);
     inner.rotation.copy(ear.rotation);
-    catHead.add(ear, inner);
+    const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.009, 0.022, 4), ginger);
+    tuft.position.set(sx * 0.05, -0.012, 0.006);
+    tuft.rotation.z = -sx * (Math.PI / 2 + 0.35);
+    catHead.add(ear, inner, tuft);
     for (const dy of [-0.004, 0.004]) {
-      const whisker = box(0.03, 0.0011, 0.0011, new THREE.MeshBasicMaterial({ color: '#fff6e6' }), sx * 0.034, -0.012 + dy, 0.034);
+      const whisker = box(0.036, 0.0011, 0.0011, new THREE.MeshBasicMaterial({ color: '#fff6e6' }), sx * 0.04, -0.014 + dy, 0.036);
       whisker.rotation.z = sx * dy * 30;
       catHead.add(whisker);
     }
@@ -1361,24 +1853,26 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   const eyeMat = new THREE.MeshBasicMaterial({ color: '#c8ff5a', toneMapped: false, fog: false });
   const catEyes = [-1, 1].map((sx) => {
     const eye = new THREE.Group();
-    eye.add(new THREE.Mesh(new THREE.SphereGeometry(0.0068, 12, 10), eyeMat));
-    eye.add(box(0.0022, 0.0095, 0.002, new THREE.MeshBasicMaterial({ color: '#16101a' }), 0, 0, 0.0062));
-    eye.position.set(sx * 0.0155, 0.006, 0.033);
+    eye.add(new THREE.Mesh(new THREE.SphereGeometry(0.0095, 14, 12), eyeMat));
+    eye.add(box(0.0034, 0.0135, 0.002, new THREE.MeshBasicMaterial({ color: '#16101a' }), 0, 0, 0.0088));
+    eye.add(ball(0.0022, new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false, fog: false }), 0.003, 0.0035, 0.0088));
+    eye.position.set(sx * 0.018, 0.006, 0.036);
     catHead.add(eye);
     return eye;
   });
-  catHead.position.set(0, 0.132, 0.012);
-  // The tail lies on the sill, curled round the paws the way a sitting cat keeps it.
+  catHead.position.set(0, 0.142, 0.012);
+  // The tail stands up beside the body in a question mark, as a pleased cat carries it.
   const catTail = new THREE.Group();
   const tailPath = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(0, 0, 0), new THREE.Vector3(-0.04, 0, 0.004), new THREE.Vector3(-0.062, 0, 0.04),
-    new THREE.Vector3(-0.05, 0, 0.08), new THREE.Vector3(-0.018, 0, 0.098), new THREE.Vector3(0.012, 0, 0.096),
+    new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.04, 0, 0.002), new THREE.Vector3(0.068, 0.018, 0.01),
+    new THREE.Vector3(0.074, 0.058, 0.016), new THREE.Vector3(0.062, 0.093, 0.018), new THREE.Vector3(0.044, 0.106, 0.018),
   ]);
-  catTail.add(new THREE.Mesh(new THREE.TubeGeometry(tailPath, 32, 0.0095, 10), ginger));
-  catTail.add(ball(0.0105, creamFur, 0.012, 0, 0.096));
-  catTail.position.set(0, 0.011, -0.04);
+  catTail.add(new THREE.Mesh(new THREE.TubeGeometry(tailPath, 32, 0.0105, 10), ginger));
+  catTail.add(ball(0.012, creamFur, 0.044, 0.106, 0.018));
+  catTail.position.set(0.02, 0.012, -0.03);
   cat.add(catHead, catTail);
-  cat.position.set(0.09, -0.025, 0.02);
+  // Well forward on the sill: the whole cat sits in front of the glass and its bars, touching neither.
+  cat.position.set(0.09, -0.025, 0.09);
   windowGroup.add(cat);
 
   // A cauldron quietly bubbling at the back.
@@ -1493,7 +1987,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   const KEY_ROWS = 4;
   const keycaps = new THREE.InstancedMesh(
     new RoundedBoxGeometry(0.019, 0.009, 0.019, 2, 0.003),
-    toon({ color: '#ffffff', outline: false, rim: 0 }),
+    toon({ color: '#ffffff', map: plain, outline: false, rim: 0, gloss: 0.25 }),
     KEY_COLS * KEY_ROWS,
   );
   const keyDummy = new THREE.Object3D();
@@ -1524,7 +2018,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
 
   // Floppy disks: ancient relics.
   const floppies = new THREE.Group();
-  const shutter = toon({ color: '#c8ccd8', gloss: 0.8 });
+  const shutter = toon({ color: '#8a8aa0', gloss: 0.8 });
   ['#3b62b8', '#d8402a', '#e9b44c'].forEach((color, i) => {
     const disk = new THREE.Group();
     disk.add(new THREE.Mesh(new RoundedBoxGeometry(0.09, 0.005, 0.09, 2, 0.002), toon({ color })));
@@ -1575,7 +2069,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
 
   /* ----- tall cases in the corners, stacked with a developer's hoard ----- */
   const leds: THREE.MeshBasicMaterial[] = [];
-  const caseWood = toon({ color: '#6a3f24' });
+  const caseWood = toon({ color: '#6a3f24', rim: 0.1 });
   const caseRand = seeded(73);
   const spineColors = ['#5b2434', '#27463a', '#7a5a22', '#283a66', '#7c2f20', '#4a3a66', '#2f5560', '#8a4a1c'];
   const led = (color: string, x: number, y: number, z: number, parent: THREE.Object3D) => {
@@ -1590,7 +2084,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     for (let i = 0; i < count; i++) {
       const w = 0.02 + caseRand() * 0.02;
       const h = 0.13 + caseRand() * 0.07;
-      const b = new THREE.Mesh(new RoundedBoxGeometry(w, h, 0.13, 2, 0.004), toon({ color: spineColors[Math.floor(caseRand() * spineColors.length)] }));
+      const b = new THREE.Mesh(new RoundedBoxGeometry(w, h, 0.13, 2, 0.004), toon({ color: spineColors[Math.floor(caseRand() * spineColors.length)], rim: 0.12 }));
       b.position.set(x + w / 2, h / 2, 0);
       if (i === count - 1 && count > 2) { b.rotation.z = 0.2; b.position.x += 0.012; }
       g.add(b);
@@ -1609,7 +2103,10 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     g.position.y = 0.1;
     return g;
   };
-  const crtOn = colorTex(labelCanvas('> hello, world_', '#062010', '#5dff8a', 320, 220));
+  // The old monitor runs a ticker: one long line that scrolls past, wrapping round.
+  const crtOn = colorTex(tickerCanvas('> hello, world_    > hire --senior tomato    > coffee && code    > git commit -m "magic"    '));
+  crtOn.wrapS = THREE.RepeatWrapping;
+  crtOn.repeat.x = 0.2;
   const crtScreen = new THREE.MeshBasicMaterial({ map: crtOn, toneMapped: false, fog: false });
   const makeCrt = () => {
     const g = new THREE.Group();
@@ -1647,7 +2144,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   };
   const makeRouter = () => {
     const g = new THREE.Group();
-    g.add(new THREE.Mesh(new RoundedBoxGeometry(0.15, 0.028, 0.09, 2, 0.006), toon({ color: '#eef0f6', gloss: 0.4 })));
+    g.add(new THREE.Mesh(new RoundedBoxGeometry(0.15, 0.028, 0.09, 2, 0.006), toon({ color: '#e8dcc0', gloss: 0.4 })));
     for (const x of [-0.055, 0.055]) {
       const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.0035, 0.0045, 0.11, 8), toon({ color: '#2b3042' }));
       antenna.position.set(x, 0.065, -0.03);
@@ -1721,7 +2218,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   const bugJar = new THREE.Group();
   const jarGlass = new THREE.Mesh(
     new THREE.LatheGeometry([[0, 0], [0.05, 0], [0.056, 0.006], [0.056, 0.1], [0.046, 0.112], [0.046, 0.122]].map(([x, y]) => new THREE.Vector2(x, y)), 40),
-    toon({ color: '#eafcff', transparent: true, opacity: 0.2, gloss: 1, side: THREE.DoubleSide, depthWrite: false, outline: false }),
+    glassMat('#eafcff', 0.26),
   );
   const jarLid = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.016, 28), toon({ color: '#c8a23a', gloss: 0.9 }));
   jarLid.position.y = 0.128;
@@ -1784,34 +2281,108 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   const caseMat = toon({ color: '#343848', gloss: 0.35 });
   const caseDark = toon({ color: '#1c1e28', rim: 0 });
   const TOWER = { w: 0.32, h: 0.34, d: 0.16 };
-  const tower = new THREE.Mesh(new RoundedBoxGeometry(TOWER.w, TOWER.h, TOWER.d, 3, 0.01), caseMat);
-  tower.position.y = TOWER.h / 2;
-  engine.add(tower);
-  for (const [fx, fz] of [[-0.12, -0.05], [0.12, -0.05], [-0.12, 0.05], [0.12, 0.05]]) engine.add(box(0.03, 0.012, 0.03, caseDark, fx, -0.004, fz));
-  // Side window, brass-framed, lit from inside.
+  // The case is a real box with one side glazed: lid, floor, far side, both ends, and a near side
+  // with the window cut out of it — so what you see through the glass has depth.
   const winW = 0.22;
   const winH = 0.24;
   const winX = -0.03;
   const winY = 0.175;
-  engine.add(box(winW, winH, 0.004, caseDark, winX, winY, TOWER.d / 2 + 0.0005));
+  const D2 = TOWER.d / 2;
+  engine.add(
+    box(TOWER.w, TOWER.h, 0.012, caseMat, 0, TOWER.h / 2, -D2 + 0.006),
+    box(TOWER.w, 0.014, TOWER.d, caseMat, 0, TOWER.h - 0.007, 0),
+    box(TOWER.w, 0.014, TOWER.d, caseMat, 0, 0.007, 0),
+    box(0.014, TOWER.h, TOWER.d, caseMat, TOWER.w / 2 - 0.007, TOWER.h / 2, 0),
+    box(0.014, TOWER.h, TOWER.d, caseMat, -TOWER.w / 2 + 0.007, TOWER.h / 2, 0),
+    box(TOWER.w / 2 - (winX + winW / 2), TOWER.h, 0.01, caseMat, (TOWER.w / 2 + winX + winW / 2) / 2, TOWER.h / 2, D2 - 0.005),
+    box(winX - winW / 2 + TOWER.w / 2, TOWER.h, 0.01, caseMat, (-TOWER.w / 2 + winX - winW / 2) / 2, TOWER.h / 2, D2 - 0.005),
+    box(winW, TOWER.h - (winY + winH / 2), 0.01, caseMat, winX, (TOWER.h + winY + winH / 2) / 2, D2 - 0.005),
+    box(winW, winY - winH / 2, 0.01, caseMat, winX, (winY - winH / 2) / 2, D2 - 0.005),
+  );
+  for (const [fx, fz] of [[-0.12, -0.05], [0.12, -0.05], [-0.12, 0.05], [0.12, 0.05]]) engine.add(box(0.03, 0.012, 0.03, caseDark, fx, -0.004, fz));
+
+  // Inside, at the back: a riveted plate glowing with the heat of the works.
+  const backZ = -D2 + 0.013;
+  engine.add(box(TOWER.w - 0.03, TOWER.h - 0.03, 0.004, toon({ color: '#4a2c16', rim: 0 }), 0, TOWER.h / 2, backZ));
   const innerGlow = new THREE.Mesh(
-    new THREE.PlaneGeometry(winW - 0.01, winH - 0.01),
+    new THREE.PlaneGeometry(winW + 0.04, winH + 0.04),
     new THREE.MeshBasicMaterial({ color: '#ff9a3c', transparent: true, opacity: 0.32, toneMapped: false, fog: false }),
   );
-  innerGlow.position.set(winX, winY, TOWER.d / 2 + 0.003);
+  innerGlow.position.set(winX, winY, backZ + 0.0025);
   engine.add(innerGlow);
+  for (let ix = 0; ix < 6; ix++) {
+    for (const iy of [0, 1]) engine.add(ball(0.004, brass, winX - 0.1 + ix * 0.04, winY + (iy ? 0.105 : -0.105), backZ + 0.004));
+  }
+
+  // Two trains of gears, one behind the other, each on its own axle…
+  const gz = D2 - 0.034;
+  const gzBack = -0.022;
+  const gearA = new THREE.Mesh(gearGeo(0.058, 14, 0.01), brass);
+  gearA.position.set(winX - 0.04, winY + 0.035, gz);
+  const gearB = new THREE.Mesh(gearGeo(0.041, 10, 0.01), copper);
+  gearB.position.set(winX + 0.052, winY - 0.012, gz);
+  const gearC = new THREE.Mesh(gearGeo(0.029, 7, 0.01), steel);
+  gearC.position.set(winX - 0.015, winY - 0.075, gz);
+  const flywheel = new THREE.Mesh(gearGeo(0.024, 6, 0.01), brass);
+  flywheel.position.set(winX + 0.068, winY + 0.075, gz);
+  const pcGearD = new THREE.Mesh(gearGeo(0.072, 18, 0.01), steel);
+  pcGearD.position.set(winX + 0.028, winY - 0.03, gzBack);
+  const pcGearE = new THREE.Mesh(gearGeo(0.038, 9, 0.01), brass);
+  pcGearE.position.set(winX - 0.078, winY - 0.072, gzBack);
+  const pcGearF = new THREE.Mesh(gearGeo(0.046, 11, 0.01), copper);
+  pcGearF.position.set(winX - 0.062, winY + 0.068, gzBack);
+  for (const g of [gearA, gearB, gearC, flywheel, pcGearD, pcGearE, pcGearF]) {
+    const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.0055, 0.0055, g.position.z - backZ + 0.012, 10), steel);
+    axle.rotation.x = Math.PI / 2;
+    axle.position.set(g.position.x, g.position.y, (g.position.z + backZ) / 2 + 0.006);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.0095, 0.0095, 0.006, 12), brass);
+    hub.rotation.x = Math.PI / 2;
+    hub.position.set(g.position.x, g.position.y, g.position.z + 0.008);
+    engine.add(axle, hub);
+  }
+  engine.add(pcGearD, pcGearE, pcGearF);
+
+  // …a glowing boiler in the corner, banded in copper, piped up to the exhaust on the lid…
+  const pcBoiler = new THREE.Mesh(new THREE.SphereGeometry(0.03, 24, 18), new THREE.MeshBasicMaterial({ color: '#ffb04a', toneMapped: false, fog: false }));
+  pcBoiler.position.set(winX + 0.074, winY - 0.082, -0.012);
+  for (const tilt of [0, Math.PI / 2]) {
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.031, 0.0035, 8, 24), copper);
+    band.position.copy(pcBoiler.position);
+    band.rotation.y = tilt;
+    engine.add(band);
+  }
+  const pipe = (points: number[][], radius = 0.0058) => new THREE.Mesh(
+    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points.map(([x, y, z]) => new THREE.Vector3(x, y, z))), 40, radius, 8),
+    copper,
+  );
+  engine.add(
+    pcBoiler,
+    pipe([[winX + 0.074, winY - 0.052, -0.012], [winX + 0.09, winY + 0.02, -0.05], [winX + 0.03, winY + 0.108, -0.055], [winX - 0.07, winY + 0.112, -0.05], [-0.115, TOWER.h - 0.012, -0.03]]),
+    pipe([[winX + 0.046, winY - 0.092, -0.012], [winX - 0.02, winY - 0.108, -0.05], [winX - 0.1, winY - 0.1, -0.052], [winX - 0.102, winY + 0.0, -0.055]], 0.0045),
+    // a valve wheel on the pipe, and a row of little lamps
+    ball(0.0075, brass, winX + 0.09, winY + 0.02, -0.05),
+  );
+  const pcValve = new THREE.Mesh(gearGeo(0.015, 8, 0.004), toon({ color: '#c8281e', gloss: 0.5 }));
+  pcValve.position.set(winX + 0.09, winY + 0.02, -0.04);
+  engine.add(pcValve);
+  for (let i = 0; i < 4; i++) led(i % 2 ? '#ffb03a' : '#5dff8a', winX - 0.096 + i * 0.016, winY - 0.112, D2 - 0.02, engine);
+
+  // …and a pane of glass over it all, in a brass frame.
+  const pcGlass = new THREE.Mesh(new THREE.PlaneGeometry(winW, winH), glassMat('#cfe8ff', 0.13));
+  pcGlass.position.set(winX, winY, D2 - 0.001);
+  pcGlass.castShadow = false;
+  const pcGlint = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.03, winH * 1.5),
+    new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.1, depthWrite: false, toneMapped: false, fog: false }),
+  );
+  pcGlint.material.userData.outlineParameters = { visible: false };
+  pcGlint.position.set(winX - 0.04, winY, D2);
+  pcGlint.rotation.z = -0.5;
+  pcGlint.scale.y = 0.62;
+  engine.add(pcGlass, pcGlint);
   for (const [bx, by, bw, bh] of [[winX, winY + winH / 2, winW + 0.012, 0.008], [winX, winY - winH / 2, winW + 0.012, 0.008], [winX - winW / 2, winY, 0.008, winH], [winX + winW / 2, winY, 0.008, winH]]) {
     engine.add(box(bw, bh, 0.008, brass, bx, by, TOWER.d / 2 + 0.003));
   }
-  const gz = TOWER.d / 2 + 0.009;
-  const gearA = new THREE.Mesh(gearGeo(0.058, 14, 0.008), brass);
-  gearA.position.set(winX - 0.04, winY + 0.035, gz);
-  const gearB = new THREE.Mesh(gearGeo(0.041, 10, 0.008), copper);
-  gearB.position.set(winX + 0.052, winY - 0.012, gz);
-  const gearC = new THREE.Mesh(gearGeo(0.029, 7, 0.008), steel);
-  gearC.position.set(winX - 0.015, winY - 0.075, gz);
-  const flywheel = new THREE.Mesh(gearGeo(0.024, 6, 0.008), brass);
-  flywheel.position.set(winX + 0.068, winY + 0.075, gz);
   // Front panel (the narrow end): power button, drive bay, ports, activity light.
   const fx0 = TOWER.w / 2 + 0.001;
   const powerButton = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.006, 16), brass);
@@ -1867,7 +2438,8 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
 
   // The CV itself, as a sealed scroll at your elbow: click it to take a copy.
   const cvScroll = new THREE.Group();
-  const scrollRoll = new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.027, 0.26, 28), parchmentMat);
+  const scrollPaper = toon({ color: '#f3e2b4', emissive: '#6a4a14', emissiveIntensity: 0.35 });
+  const scrollRoll = new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.027, 0.26, 28), scrollPaper);
   scrollRoll.rotation.z = Math.PI / 2;
   const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.31, 12), darkWood);
   rod.rotation.z = Math.PI / 2;
@@ -1878,7 +2450,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   waxSeal.position.set(0, 0.028, 0.004);
   const scrollTag = new THREE.Mesh(
     new THREE.PlaneGeometry(0.084, 0.032),
-    new THREE.MeshBasicMaterial({ map: colorTex(labelCanvas('CV.PDF', '#f4e8c8', '#a3261c', 256, 96)), side: THREE.DoubleSide }),
+    new THREE.MeshBasicMaterial({ map: colorTex(labelCanvas('CV.PDF', '#f4e8c8', '#a3261c', 256, 96)), side: THREE.DoubleSide, fog: false, toneMapped: false }),
   );
   scrollTag.position.set(-0.07, 0.024, 0.028);
   scrollTag.rotation.x = -0.95;
@@ -1891,15 +2463,18 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   // What comes out of the book when it opens: a column of light.
   const pillar = new THREE.Sprite(new THREE.SpriteMaterial({
     map: colorTex(pillarCanvas()), color: '#ffe6a8', transparent: true, opacity: 0, depthWrite: false,
-    blending: THREE.AdditiveBlending, toneMapped: false, fog: false,
+    // Drawn over everything: where the page or the standing cover cut into it, the glow got straight edges.
+    depthTest: false, blending: THREE.AdditiveBlending, toneMapped: false, fog: false,
   }));
+  pillar.renderOrder = 6;
   pillar.center.set(0.5, 0);
-  pillar.position.set(book.position.x + 0.03, -0.06, book.position.z);
+  pillar.position.set(book.position.x + 0.03, 0.02, book.position.z);
   scene.add(pillar);
   const blast = new THREE.Sprite(new THREE.SpriteMaterial({
     map: colorTex(glowCanvas('rgba(255, 250, 225, 1)', 'rgba(255, 210, 120, 0.5)')),
-    transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, fog: false,
+    transparent: true, opacity: 0, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, toneMapped: false, fog: false,
   }));
+  blast.renderOrder = 6;
   blast.position.set(book.position.x + 0.03, 0.1, book.position.z);
   scene.add(blast);
   const bookHome = book.position.clone();
@@ -1959,8 +2534,8 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   const placeBeam = () => {
     const wx = windowGroup.position.x;
     const p = beamGeo.attributes.position as THREE.BufferAttribute;
-    p.setXYZ(0, wx - 0.2, 0.82, -1.27);
-    p.setXYZ(1, wx + 0.2, 0.82, -1.27);
+    p.setXYZ(0, wx - 0.17, 0.8, -1.27);
+    p.setXYZ(1, wx + 0.17, 0.8, -1.27);
     p.setXYZ(2, wx + 0.1, 0.0, -0.1);
     p.setXYZ(3, wx + 0.75, 0.0, -0.25);
     p.needsUpdate = true;
@@ -2020,10 +2595,11 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   });
 
   /* ----- things on the table you can poke ----- */
-  interface Toy { id: string; root: THREE.Object3D; poke(): void; bounce: boolean; hoverK: number; base: number }
+  interface Toy { id: string; root: THREE.Object3D; poke(): void; bounce: boolean; hoverK: number; base: number; anchor: THREE.Object3D }
   const toys: Toy[] = [];
-  const addToy = (id: string, root: THREE.Object3D, poke: () => void, bounce = true) => {
-    toys.push({ id, root, poke, bounce, hoverK: 0, base: root.scale.x });
+  /** `anchor` is the part the label, the halo and the speech bubble attach to, when it is not the whole thing. */
+  const addToy = (id: string, root: THREE.Object3D, poke: () => void, bounce = true, anchor?: THREE.Object3D) => {
+    toys.push({ id, root, poke, bounce, hoverK: 0, base: root.scale.x, anchor: anchor ?? root });
   };
   let now = 0;
   let candleLit = true;
@@ -2111,6 +2687,9 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   }, false);
   addToy('chest', chest, () => { chestOpen = !chestOpen; }, false);
   addToy('lantern', lantern, () => { lanternOn = !lanternOn; }, false);
+  // The portrait swings on its nail when touched (and the scene hangs a new pose in the frame).
+  let portraitAt = -10;
+  addToy('portrait', portrait, () => { portraitAt = now; }, false);
   addToy('hat', hat, () => { hatAt = now; });
   addToy('crystals', crystals, () => { orbAt = now; });
   addToy('orbGroup', orbGroup, () => {
@@ -2121,13 +2700,334 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     orbLight.color.set(ORBS[orbHue]);
   }, false);
 
+  /* ----- lights out: a pull cord that shuts the window and leaves only what glows ----- */
+  const shutterMat = toon({ map: colorTex(wood, [0.5, 0.7]), color: '#8a6a4a', side: THREE.DoubleSide, rim: 0 });
+  const shutters = [-1, 1].map((sign) => {
+    const w = 0.42;
+    const rectH = 0.28;
+    const half = new THREE.Shape();
+    half.moveTo(-w / 2, 0);
+    half.lineTo(0, 0);
+    half.lineTo(0, rectH + w / 2);
+    half.absarc(0, rectH, w / 2, Math.PI / 2, Math.PI, false);
+    half.lineTo(-w / 2, 0);
+    const geo = new THREE.ShapeGeometry(half, 24);
+    // Hinged on the outer edge, so it can fold shut from there.
+    geo.translate(w / 2, 0, 0);
+    const leafMesh = new THREE.Mesh(geo, shutterMat);
+    leafMesh.position.set(sign * (-w / 2), 0, 0.009);
+    leafMesh.visible = false;
+    windowGroup.add(leafMesh);
+    return { mesh: leafMesh, sign };
+  });
+
+  const pullCord = new THREE.Group();
+  const cordPull = new THREE.Group();
+  const cordSwing = new THREE.Group();
+  const cordString = new THREE.Mesh(new THREE.CylinderGeometry(0.0036, 0.0036, 1, 6), toon({ color: '#e9d7ae', rim: 0, emissive: '#6a5020', emissiveIntensity: 0.6 }));
+  cordString.position.y = 0.5;
+  const cordBead = new THREE.Mesh(new THREE.SphereGeometry(0.026, 24, 16), toon({ color: '#ffd45a', emissive: '#ffb020', emissiveIntensity: 0.9, gloss: 1 }));
+  const cordTassel = new THREE.Mesh(new THREE.ConeGeometry(0.024, 0.075, 16), toon({ color: '#e0321e', emissive: '#7a1408', emissiveIntensity: 0.7, gloss: 0.3 }));
+  cordTassel.position.y = -0.055;
+  // A soft pulsing glow, so the cord is the first thing the eye finds — in the dark most of all.
+  const cordAura = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: colorTex(glowCanvas('rgba(255, 236, 170, 0.9)', 'rgba(255, 190, 80, 0.3)')),
+    transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, fog: false,
+  }));
+  cordAura.scale.setScalar(0.22);
+  // The string is too thin to hit: an unseen handle round the bead takes the pointer.
+  const cordGrip = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.075, 0.075, 0.3, 10),
+    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+  );
+  cordGrip.material.userData.outlineParameters = { visible: false };
+  cordGrip.position.y = 0.02;
+  cordPull.add(cordString, cordBead, cordTassel, cordAura);
+  // The grip stays put while the bead bounces, so the pointer never loses it.
+  pullCord.add(cordGrip);
+  cordPull.position.y = -1;
+  cordSwing.position.y = 1;
+  cordSwing.add(cordPull);
+  pullCord.add(cordSwing);
+  pullCord.scale.setScalar(0.7);
+  scene.add(pullCord);
+  const keyGlow = new THREE.PointLight('#7a5cff', 0, 0.9, 1);
+  keyGlow.position.y = 0.07;
+  keyboard.add(keyGlow);
+  const keyAura = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: colorTex(glowCanvas('rgba(255,255,255,0.5)', 'rgba(255,255,255,0.14)')),
+    transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, fog: false,
+  }));
+  keyAura.scale.set(0.62, 0.3, 1);
+  keyAura.position.y = 0.03;
+  keyboard.add(keyAura);
+  // Fur, hair and paper carry a little self-light by day so they read as warm. They are not lamps:
+  // with the lights out it has to go, or they shine in the dark with nothing lighting them.
+  const pretend = [ginger, hairMat, scrollPaper].map((mat) => ({ mat, base: mat.emissiveIntensity }));
+  // What really glows gets a real light of its own.
+  const scrollLight = new THREE.PointLight('#ffd45a', 0.1, 0.8, 1);
+  scrollLight.position.y = 0.06;
+  cvScroll.add(scrollLight);
+  const cordLight = new THREE.PointLight('#ffc040', 0.1, 0.9, 1);
+  cordBead.add(cordLight);
+  const fogDay = new THREE.Color('#0d0914');
+  const WHITE = new THREE.Color('#ffffff');
+  let darkOn = false;
+  let darkK = 0;
+  let darkT = 0;
+  let cordAt = -10;
+  // The cord hangs on a spring: `cordAng` is how far the bead is from rest (down is negative), `cordVel` its speed.
+  let cordAng = 0;
+  let cordVel = 0;
+  let cordT = 0;
+  const catHeadAt = new THREE.Vector3();
+  addToy('cord', pullCord, () => { darkOn = !darkOn; cordAt = now; cordVel -= 1.9; tomatoAt = now; hoodPuffAt = now; }, false, cordBead);
+
+  // Pictures and labels are flat colour; in the dark they must fade like everything that is not a lamp.
+  const papers: { mat: THREE.MeshBasicMaterial; base: THREE.Color }[] = [];
+  scene.traverse((o) => {
+    const mat = (o as THREE.Mesh).material as THREE.MeshBasicMaterial | undefined;
+    // …except the label on the CV scroll: that is the one thing in the room that must always be readable.
+    if (mat && mat !== scrollTag.material && (mat as THREE.Material).type === 'MeshBasicMaterial' && mat.toneMapped && !mat.transparent && !papers.some((x) => x.mat === mat)) {
+      papers.push({ mat, base: mat.color.clone() });
+    }
+  });
+
+  /* ----- lights out, a bug comes out: catch it and it becomes a card on the board and a guest of the jar ----- */
+  const rbBug = new THREE.Group();
+  const rbBody = new THREE.Group();
+  rbBody.add(
+    ball(0.0095, toon({ color: '#ff4a2a', emissive: '#ff3b1a', emissiveIntensity: 1.1, gloss: 0.9 }), 0, 0, 0, 1.25, 0.7, 0.9),
+    ball(0.005, toon({ color: '#16101a' }), 0.012, 0, 0),
+  );
+  for (const side of [-1, 1]) {
+    for (const dx of [-0.006, 0, 0.006]) rbBody.add(box(0.0012, 0.0012, 0.009, new THREE.MeshBasicMaterial({ color: '#16101a' }), dx, -0.003, side * 0.009));
+  }
+  rbBody.scale.setScalar(1.9);
+  const rbAura = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: colorTex(glowCanvas('rgba(255, 190, 150, 0.9)', 'rgba(255, 90, 50, 0.3)')),
+    transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, fog: false,
+  }));
+  rbAura.scale.setScalar(0.11);
+  // It is small and quick: an unseen ball round it is what the pointer catches.
+  const rbGrip = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+  rbGrip.material.userData.outlineParameters = { visible: false };
+  // A sign that hops along above it, so nobody has to guess what the red dot is for.
+  const rbHintCanvas = document.createElement('canvas');
+  rbHintCanvas.width = 320;
+  rbHintCanvas.height = 150;
+  const rbHintTex = colorTex(rbHintCanvas);
+  const paintBugHint = (text: string) => {
+    const g = rbHintCanvas.getContext('2d')!;
+    g.clearRect(0, 0, 320, 150);
+    g.lineJoin = 'round';
+    g.lineWidth = 8;
+    g.strokeStyle = '#2a1810';
+    g.fillStyle = '#ffd45a';
+    // A pill with a pointer underneath.
+    g.beginPath();
+    g.roundRect(10, 8, 300, 96, 48);
+    g.fill();
+    g.stroke();
+    g.beginPath();
+    g.moveTo(136, 102);
+    g.lineTo(160, 140);
+    g.lineTo(184, 102);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    g.fillRect(140, 92, 40, 14);
+    g.fillStyle = '#2a1810';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    let size = 58;
+    do { g.font = `700 ${size}px Lora, Georgia, serif`; size -= 2; } while (g.measureText(text).width > 262 && size > 24);
+    g.fillText(text, 160, 58);
+    rbHintTex.needsUpdate = true;
+  };
+  paintBugHint('!');
+  const rbHint = new THREE.Sprite(new THREE.SpriteMaterial({ map: rbHintTex, transparent: true, depthWrite: false, depthTest: false, toneMapped: false, fog: false }));
+  rbHint.renderOrder = 8;
+  rbHint.center.set(0.5, 0);
+  rbHint.scale.set(0.115, 0.054, 1);
+  rbBug.add(rbBody, rbAura, rbGrip, rbHint);
+  const RB_AWAY = new THREE.Vector3(0, -40, 0);
+  rbBug.position.copy(RB_AWAY);
+  scene.add(rbBug);
+  // The ticket it turns into: a red card that flies from the jar to the board.
+  const rbCard = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.075, 0.05),
+    new THREE.MeshBasicMaterial({ color: '#ff6a5a', side: THREE.DoubleSide, transparent: true, toneMapped: false, fog: false }),
+  );
+  rbCard.material.userData.outlineParameters = { visible: false };
+  const rbCardAura = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: colorTex(glowCanvas('rgba(255, 220, 200, 0.9)', 'rgba(255, 110, 80, 0.35)')),
+    transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, fog: false,
+  }));
+  rbCardAura.scale.setScalar(0.2);
+  rbCard.add(rbCardAura);
+  rbCard.visible = false;
+  scene.add(rbCard);
+  const rbBoardAt = new THREE.Vector3();
+  const RB_TO_JAR = 2.1;
+  const RB_CARD = 1.6;
+  /** hidden → run → caught (carried to the jar) → card (the ticket flies to the board) → hidden */
+  const RB_GLOW = 3.8;
+  const rbSlot = new THREE.Vector3();
+  /** Where on the board the next card goes, matching the slots drawn by kanbanCanvas. */
+  const RB_SLOTS = [[0, 3], [1, 2], [1, 3]];
+  let rbState: 'hidden' | 'run' | 'caught' | 'card' | 'glow' = 'hidden';
+  let rbNextAt = 0;
+  let rbT0 = 0;
+  let rbCaught = 0;
+  let rbPauseUntil = 0;
+  let boardFlashAt = -10;
+  const rbGoal = new THREE.Vector3();
+  const rbFrom = new THREE.Vector3();
+  const rbJar = new THREE.Vector3();
+  /** Set by layout(): an upright screen cuts the keyboard's end of the table off. */
+  let rbTall = false;
+  /** The clear strip of table in front of the keyboard, which the camera can see; on an upright screen, the one in front of the book. */
+  const rbPick = (v: THREE.Vector3) => (rbTall
+    ? v.set(-0.24 + Math.random() * 0.46, 0.012, 0.17 + Math.random() * 0.09)
+    : v.set(-0.62 + Math.random() * 0.48, 0.012, 0.06 + Math.random() * 0.08));
+  addToy('bug', rbBug, () => {
+    if (rbState !== 'run') return;
+    rbState = 'caught';
+    rbT0 = now;
+    rbFrom.copy(rbBug.position);
+  }, false);
+
+  /* ----- now and then the room does something by itself ----- */
+  // A letter that blows in through the window, tumbles about the room and settles on the table.
+  const mailEnv = new THREE.Group();
+  const mailPaper = toon({ color: '#f6ead0', emissive: '#6a4a14', emissiveIntensity: 0.35 });
+  pretend.push({ mat: mailPaper, base: mailPaper.emissiveIntensity });
+  mailEnv.add(new THREE.Mesh(new RoundedBoxGeometry(0.13, 0.005, 0.088, 2, 0.002), mailPaper));
+  for (const sx of [-1, 1]) {
+    const fold = box(0.078, 0.0012, 0.003, toon({ color: '#b89a60', rim: 0 }), sx * 0.032, 0.0031, -0.012);
+    fold.rotation.y = sx * 0.58;
+    mailEnv.add(fold);
+  }
+  const mailSeal = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.014, 0.006, 18), toon({ color: '#b01c14', gloss: 0.9 }));
+  mailSeal.position.set(0, 0.005, 0.008);
+  const mailAura = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: colorTex(glowCanvas('rgba(255, 236, 170, 0.8)', 'rgba(255, 200, 90, 0.25)')),
+    transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, fog: false,
+  }));
+  mailAura.scale.setScalar(0.3);
+  mailEnv.add(mailSeal, mailAura);
+  const MAIL_AWAY = new THREE.Vector3(0, -40, 0);
+  const MAIL_REST = new THREE.Vector3(-0.28, 0.012, 0.0);
+  mailEnv.position.copy(MAIL_AWAY);
+  scene.add(shadow(mailEnv));
+  const mailPath = new THREE.CatmullRomCurve3([new THREE.Vector3(), new THREE.Vector3()]);
+  let mailState: 'idle' | 'fly' | 'rest' = 'idle';
+  let mailT0 = 0;
+  let mailSpin = 0;
+  let mailPrevT = 0;
+  let sashK = 0;
+  let knockT0 = -10;
+  /** No new visitor before this moment: one thing at a time. */
+  let evNext = 0;
+  /** Where the cat and the hero are looking, and how much (0–1). */
+  const gazeAt = new THREE.Vector3();
+  let gazeK = 0;
+  let gazeUntil = -1;
+  const heroAt = new THREE.Vector3();
+  const heroLook = new THREE.Vector3();
+  const heroSpot = new THREE.Vector3();
+  let heroFollow = 0;
+  let heroYawRest = 0.35;
+  let hoodPuffAt = -10;
+  let heroDark = false;
+  const hoodPuff = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: colorTex(glowCanvas('rgba(210, 200, 235, 0.95)', 'rgba(120, 105, 160, 0.55)')), transparent: true, opacity: 0, depthWrite: false, depthTest: false, toneMapped: false, fog: false,
+  }));
+  hoodPuff.renderOrder = 7;
+  scene.add(hoodPuff);
+  const catLook = new THREE.Vector3();
+  const catSpot = new THREE.Vector3();
+  let catFollow = 0;
+  const startMail = () => {
+    const wx = windowGroup.position.x;
+    // Through the opened left pane — from the owl's beak, if it was the owl that brought it.
+    if (mailFromOwl) owl.getWorldPosition(mailFrom); else mailFrom.set(wx - 0.1, 0.72, -1.27);
+    mailPath.points = [
+      // Kept low enough to stay inside the picture the whole way round.
+      mailFrom.clone(), new THREE.Vector3(wx + 0.02, 0.72, -1.05), new THREE.Vector3(wx + 0.3, 0.7, -0.82), new THREE.Vector3(0.42, 0.6, -0.6),
+      new THREE.Vector3(0.48, 0.42, -0.22), new THREE.Vector3(0.04, 0.4, 0.02), new THREE.Vector3(-0.36, 0.3, -0.14),
+      // The last stretch is a glide: out past its place, back again, and down flat.
+      new THREE.Vector3(-0.2, 0.15, 0.05), new THREE.Vector3(-0.36, 0.085, -0.03), new THREE.Vector3(-0.24, 0.035, 0.012), MAIL_REST.clone(),
+    ];
+    mailState = 'fly';
+    mailT0 = now;
+    mailSpin = 0;
+    opts.onEvent?.(mailFromOwl ? 'mail-owl' : 'mail');
+    mailFromOwl = false;
+  };
+  // The post owl: it lives beyond the glass, so it is a painted card between the sky and the bars.
+  const owlWithLetter = colorTex(owlCanvas(true));
+  const owlBare = colorTex(owlCanvas(false));
+  const owl = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.33, 0.22),
+    new THREE.MeshBasicMaterial({ map: owlWithLetter, transparent: true, depthWrite: false, toneMapped: false, fog: false }),
+  );
+  owl.material.userData.outlineParameters = { visible: false };
+  owl.visible = false;
+  owl.position.z = 0.0075;
+  windowGroup.add(owl);
+  let owlT0 = -10;
+  /** 0 away · 1 flying in · 2 against the glass · 3 back up at the opened pane · 4 letter thrown, watching · 5 leaving */
+  let owlStage = 0;
+  let mailFromOwl = false;
+  const mailFrom = new THREE.Vector3();
+  let bookNudgeAt = -1;
+  let bookNudgeT0 = -10;
+  const startOwl = () => {
+    owlT0 = now;
+    owlStage = 1;
+    owl.material.map = owlWithLetter;
+  };
+  let autoNext = -1;
+  const callVisitor = (kind?: 'owl' | 'mail' | 'knock') => {
+    if (locked || now < evNext || mailState === 'fly' || owlStage > 0) return;
+    // A letter needs an open window and a clear table; otherwise it has to be a knock.
+    const letterCan = mailState === 'idle' && !darkOn && !opts.reducedMotion;
+    const dice = Math.random();
+    const pick = kind ?? (dice < 0.35 ? 'owl' : dice < 0.68 ? 'mail' : 'knock');
+    if (letterCan && pick === 'owl') { evNext = now + 10; startOwl(); } else if (letterCan && pick === 'mail') { evNext = now + 7; startMail(); } else { evNext = now + 4.5; startKnock(); }
+  };
+  const startKnock = () => {
+    knockT0 = now;
+    // The door is out of the picture, to your left.
+    gazeAt.set(-2.4, 0.45, 0.5);
+    gazeUntil = now + 4.2;
+    opts.onEvent?.('knock');
+  };
+  addToy('mail', mailEnv, () => {
+    if (mailState !== 'rest') return;
+    mailState = 'idle';
+    mailEnv.position.copy(MAIL_AWAY);
+  }, false);
+
   // One golden halo that sits behind whatever the pointer is over.
   const hoverHalo = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: colorTex(glowCanvas('rgba(255, 236, 170, 0.85)', 'rgba(255, 200, 90, 0.35)')),
+    map: colorTex(glowCanvas('rgba(255, 236, 170, 0.5)', 'rgba(255, 200, 90, 0.18)')),
     transparent: true, opacity: 0, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, toneMapped: false, fog: false,
   }));
   hoverHalo.renderOrder = -1;
   scene.add(hoverHalo);
+  // …and, for things that stand on the table, a thin gold circle drawn on the wood around them.
+  const hoverRing = new THREE.Mesh(
+    new THREE.PlaneGeometry(1, 1),
+    new THREE.MeshBasicMaterial({
+      map: colorTex(ringCanvas()), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, fog: false,
+    }),
+  );
+  hoverRing.rotation.x = -Math.PI / 2;
+  scene.add(hoverRing);
+  let ringOn = false;
   let haloK = 0;
   const hoverBox = new THREE.Box3();
   const hoverSize = new THREE.Vector3();
@@ -2153,6 +3053,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     renderer.setSize(w, h, false);
     const aspect = w / h;
     camera.aspect = aspect;
+    rbTall = aspect < 0.8;
     if (aspect < 0.8) {
       // Portrait: stand further back so the whole table fits between the edges.
       camera.fov = 66;
@@ -2189,6 +3090,11 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     board.position.x = Math.max(0.86, curio.position.x + 0.33 * fit + 0.26);
     board.visible = half > 1.25;
     lantern.position.x = windowGroup.position.x - 0.42;
+    // The cord hangs right in front of you, in the upper right of the picture, whatever the screen.
+    const reach = 0.62;
+    const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    const ahead = lookHome.clone().sub(camHome).normalize().multiplyScalar(reach).add(camHome);
+    pullCord.position.set(ahead.x + tanV * aspect * reach * 0.8, ahead.y + tanV * reach * 0.42, ahead.z);
     lantern.visible = half > 1.2;
   };
 
@@ -2230,12 +3136,18 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     hoverToy = what && what !== 'book' ? what : null;
     canvas.style.cursor = what ? 'pointer' : '';
     if (what !== before) {
-      const target = what === 'book' ? book : what ? what.root : null;
+      // Touching the cord makes it bob, so it answers the pointer before any click.
+      if (what && what !== 'book' && what.id === 'cord') cordVel -= 0.55;
+      const target = what === 'book' ? book : what ? what.anchor : null;
       if (target) {
         hoverBox.setFromObject(target);
         hoverBox.getSize(hoverSize);
         hoverBox.getCenter(hoverHalo.position);
-        hoverHalo.scale.setScalar(Math.max(hoverSize.x, hoverSize.y, hoverSize.z) * 2.1);
+        hoverHalo.scale.setScalar(Math.max(hoverSize.x, hoverSize.y, hoverSize.z) * 1.7);
+        // Only what rests on the table top gets the circle; things on the wall keep the faint glow alone.
+        ringOn = hoverBox.min.y < 0.03 && hoverBox.min.y > -0.05;
+        hoverRing.position.set(hoverHalo.position.x, 0.004, hoverHalo.position.z);
+        hoverRing.scale.setScalar(Math.max(hoverSize.x, hoverSize.z) * 1.55 + 0.05);
         hoverTop.set(hoverHalo.position.x, hoverBox.max.y, hoverHalo.position.z).project(camera);
         const rect = canvas.getBoundingClientRect();
         opts.onHover?.(what === 'book' ? 'book' : (what as Toy).id, ((hoverTop.x + 1) / 2) * rect.width, ((1 - hoverTop.y) / 2) * rect.height);
@@ -2252,7 +3164,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     what.poke();
     if (opts.onPoke) {
       // Anchor the speech bubble just above the thing that was poked.
-      const bounds = new THREE.Box3().setFromObject(what.root);
+      const bounds = new THREE.Box3().setFromObject(what.anchor);
       const top = new THREE.Vector3((bounds.min.x + bounds.max.x) / 2, bounds.max.y, (bounds.min.z + bounds.max.z) / 2).project(camera);
       const rect = canvas.getBoundingClientRect();
       opts.onPoke(what.id, ((top.x + 1) / 2) * rect.width, ((1 - top.y) / 2) * rect.height);
@@ -2272,6 +3184,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   let frame = 0;
   let paused = false;
   let peek = 0;
+  let shadowFrame = 0;
   const still = opts.reducedMotion;
 
   const render = () => {
@@ -2303,6 +3216,14 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     if (!still) {
       book.position.set(bookHome.x + Math.sin(t * 71) * 0.003 * strain, bookHome.y + Math.abs(Math.sin(t * 57)) * 0.004 * strain, bookHome.z + Math.sin(t * 63) * 0.002 * strain);
       book.rotation.set(Math.sin(t * 77) * 0.012 * strain, bookTurn, Math.sin(t * 89) * 0.014 * strain);
+      // Left alone, the book gives a little hop now and then: remember me?
+      if (bookNudgeAt < 0 && introK >= 1) bookNudgeAt = t + 9;
+      if (bookNudgeAt > 0 && t > bookNudgeAt && !locked && !hover && progress === 0) { bookNudgeT0 = t; bookNudgeAt = t + 13 + Math.random() * 9; }
+      const nudge = (t - bookNudgeT0) / 0.62;
+      if (nudge >= 0 && nudge < 1 && progress === 0) {
+        book.position.y += Math.sin(nudge * Math.PI) * 0.024;
+        book.rotation.z += Math.sin(nudge * Math.PI * 2) * 0.05;
+      }
     }
 
     if (!still) {
@@ -2322,8 +3243,9 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     }
     // Opening shot: from high at the back of the room, down to your seat at the table.
     const arrive = 1 - Math.pow(1 - introK, 3);
-    camFar.set(camHome.x - 0.28, camHome.y + 0.6, camHome.z + 1.25);
-    lookFar.set(lookHome.x, lookHome.y + 0.12, lookHome.z);
+    // A short push-in, not a fly-over: from further back the edges of the set would show.
+    camFar.set(camHome.x - 0.02, camHome.y + 0.03, camHome.z + 0.13);
+    lookFar.set(lookHome.x, lookHome.y + 0.02, lookHome.z);
     const lean = opening ? ease(progress) : progress;
     camNow.copy(camFar).lerp(camHome, arrive).lerp(camRead, lean);
     lookNow.copy(lookFar).lerp(lookHome, arrive).lerp(lookRead, lean);
@@ -2382,19 +3304,22 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
       if (toy.bounce) toy.root.scale.setScalar(toy.base * (1 + 0.04 * toy.hoverK));
     });
     haloK += ((hover || hoverToy ? 1 : 0) - haloK) * 0.2;
-    hoverHalo.material.opacity = haloK * (0.5 + (still ? 0 : Math.sin(t * 5) * 0.12));
+    hoverHalo.material.opacity = haloK * (ringOn ? 0.1 : 0.2);
+    hoverRing.material.opacity = ringOn ? haloK * 0.75 : 0;
+    if (!still) hoverRing.rotation.z = t * 0.5;
     [0].forEach(() => {
     });
 
     // Candle: blow it out and the moon takes over.
-    litK += ((candleLit ? 1 : 0) - litK) * 0.09;
+    // Lights out puts the candle out as well; it comes back with the light.
+    litK += ((candleLit && !darkOn ? 1 : 0) - litK) * 0.09;
     flame.visible = litK > 0.03;
     flame.scale.multiplyScalar(Math.max(litK, 0.001));
     halo.material.opacity = litK;
     candleLight.intensity *= litK;
     waxMat.emissiveIntensity *= litK;
     poolMat.emissiveIntensity = 0.5 * litK;
-    hemi.intensity = 1.0 + (1 - litK) * 0.7;
+    hemi.intensity = 1.12 + (1 - litK) * 0.7;
     beam.material.opacity = 0.75 + (1 - litK) * 0.25 + (still ? 0 : Math.sin(t * 0.7) * 0.04);
     moon.intensity = 1.1 + (1 - litK) * 2.2;
     const smokeK = (t - smokeAt) / 1.8;
@@ -2410,10 +3335,29 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     const hop = (t - tomatoAt) / 0.75;
     if (hop >= 0 && hop < 1) {
       tomato.position.y = tomatoY + Math.sin(hop * Math.PI) * 0.075;
-      tomato.rotation.y = ease(hop) * Math.PI * 2;
+      // One full turn from wherever he was facing, so it neither snaps at the start nor at the end.
+      tomato.rotation.y = heroYawRest + ease(hop) * Math.PI * 2;
     } else {
       tomato.position.y = tomatoY;
-      tomato.rotation.y = 0;
+      tomato.getWorldPosition(heroAt);
+      heroAt.y += 0.09;
+      // The same rule as the cat: he looks at whatever is happening; lights out he stares at you,
+      // and follows the pointer only when it comes close.
+      if (gazeK > 0.02) {
+        heroLook.copy(gazeAt);
+      } else {
+        heroSpot.copy(heroAt).project(camera);
+        const nearPx = Math.hypot((pointer.x - heroSpot.x) * 0.5 * window.innerWidth, (-pointer.y - heroSpot.y) * 0.5 * window.innerHeight);
+        heroFollow += ((nearPx < 200 ? 1 : 0) - heroFollow) * 0.1;
+        heroLook.set(pointer.x, -pointer.y, 0.5).unproject(camera).sub(camera.position).normalize().multiplyScalar(0.5).add(camera.position);
+        heroLook.lerpVectors(camera.position, heroLook, heroFollow);
+      }
+      // The hop leaves him a whole turn round; take it off, or the easing below unwinds it as a second spin.
+      tomato.rotation.y = Math.atan2(Math.sin(tomato.rotation.y), Math.cos(tomato.rotation.y));
+      const heroWatch = Math.max(darkK, gazeK);
+      const heroYaw = THREE.MathUtils.clamp(Math.atan2(heroLook.x - heroAt.x, heroLook.z - heroAt.z), -1.5, 1.5);
+      tomato.rotation.y += (0.35 + (heroYaw - 0.35) * heroWatch - tomato.rotation.y) * 0.18;
+      heroYawRest = tomato.rotation.y;
     }
 
     // Toadstools squash and spring back, one after another.
@@ -2451,7 +3395,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     lanternAura.material.opacity = lanternK;
     lantern.rotation.z = still ? 0 : Math.sin(t * 0.9) * 0.035;
     const hh = (t - hatAt) / 0.7;
-    hat.position.y = hatY + (hh >= 0 && hh < 1 ? Math.sin(hh * Math.PI) * 0.09 : 0);
+    hat.position.y = hatY + chestK * (0.15 + (still ? 0 : Math.sin(t * 1.8) * 0.008)) + (hh >= 0 && hh < 1 ? Math.sin(hh * Math.PI) * 0.09 : 0);
     hat.rotation.z = hh >= 0 && hh < 1 ? Math.sin(hh * Math.PI * 2) * 0.25 : 0;
     const flash = Math.max(0, 1 - (t - orbAt) / 1.2);
     orbMat.emissiveIntensity = 0.9 + flash * 1.6 + (still ? 0 : Math.sin(t * 1.3) * 0.15);
@@ -2468,12 +3412,34 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     // Cat: breathes, blinks, sways its tail; poke it and it tilts its head at you.
     const cd = t - catAt;
     const awake = cd > 0 && cd < 2.2 ? Math.sin((cd / 2.2) * Math.PI) : 0;
-    catHead.rotation.z = awake * 0.4;
-    catHead.rotation.y = still ? 0 : Math.sin(t * 0.4) * 0.12;
+    // In the dark the cat stops looking about and fixes its eyes on you.
+    catHead.getWorldPosition(catHeadAt);
+    // What it watches: whatever is going on in the room, or — lights out — your pointer.
+    if (gazeK > 0.02) {
+      catLook.copy(gazeAt);
+    } else {
+      // Lights out it stares straight at you — unless the pointer comes within about 200 px, then it tracks that.
+      catSpot.copy(catHeadAt).project(camera);
+      const nearPx = Math.hypot((pointer.x - catSpot.x) * 0.5 * window.innerWidth, (-pointer.y - catSpot.y) * 0.5 * window.innerHeight);
+      catFollow += ((nearPx < 200 ? 1 : 0) - catFollow) * 0.1;
+      catLook.set(pointer.x, -pointer.y, 0.5).unproject(camera).sub(camera.position).normalize().multiplyScalar(0.9).add(camera.position);
+      catLook.lerpVectors(camera.position, catLook, catFollow);
+    }
+    const watch = Math.max(darkK, gazeK);
+    const stareYaw = THREE.MathUtils.clamp(Math.atan2(catLook.x - catHeadAt.x, catLook.z - catHeadAt.z), -1.25, 1.25);
+    const starePitch = THREE.MathUtils.clamp(-Math.atan2(catLook.y - catHeadAt.y, Math.hypot(catLook.x - catHeadAt.x, catLook.z - catHeadAt.z)), -0.6, 0.6);
+    catHead.rotation.z = awake * 0.4 * (1 - watch);
+    catHead.rotation.y += ((still ? 0 : Math.sin(t * 0.4) * 0.12) * (1 - watch) + stareYaw * watch - catHead.rotation.y) * 0.18;
+    catHead.rotation.x += (starePitch * watch - catHead.rotation.x) * 0.18;
     catTail.rotation.y = still ? 0 : Math.sin(t * (1.1 + awake * 5)) * (0.05 + awake * 0.1);
-    catBody.scale.y = 1.2 + (still ? 0 : Math.sin(t * 1.6) * 0.025);
-    const blink = still ? 1 : (t % 4.2 < 0.14 ? 0.12 : 1);
-    catEyes.forEach((eye) => { eye.scale.y = blink; });
+    catBody.scale.y = 1 + (still ? 0 : Math.sin(t * 1.6) * 0.025);
+    const blink = still || darkK > 0.5 ? 1 : (t % 4.2 < 0.14 ? 0.12 : 1);
+    // Lights out: wide, glowing, and narrowed to a suspicious squint.
+    catEyes.forEach((eye, i) => {
+      // Narrow slits, slanted up at the outer corners: it does not trust you.
+      eye.scale.set(1 + 0.35 * darkK, blink * (1 + 0.3 * darkK) * (1 - 0.66 * darkK), 1);
+      eye.rotation.z = (i === 0 ? -1 : 1) * 0.32 * darkK;
+    });
 
     // Cauldron: bubbles rise and pop; a poke makes it boil over for a moment.
     const boil = Math.max(0, 1 - (t - cauldronAt) / 2.4);
@@ -2512,6 +3478,10 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     gearC.rotation.z = -engineAngle * (14 / 7);
     innerGlow.material.opacity = 0.3 + rev * 0.5 + (still ? 0 : Math.sin(t * 5) * 0.04);
     flywheel.rotation.z = -engineAngle * (14 / 6);
+    pcGearD.rotation.z = -engineAngle * 0.62;
+    pcGearE.rotation.z = engineAngle * 1.24 + 0.3;
+    pcGearF.rotation.z = engineAngle * 0.97;
+    pcValve.rotation.z = engineAngle * 0.4;
     pistons.forEach((piston) => { piston.position.y = PISTON_Y + Math.sin(engineAngle * 2 + piston.userData.phase) * 0.012; });
     needle.rotation.z = 0.9 - rev * 1.9 + (still ? 0 : Math.sin(t * 9) * 0.04 * (1 + rev * 3));
     engine.position.set(engineHome.x + Math.sin(t * 67) * 0.0022 * rev, engineHome.y + Math.abs(Math.sin(t * 49)) * 0.003 * rev, engineHome.z);
@@ -2531,9 +3501,9 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     // Bugs potter about inside their jar; rattle it and they scurry.
     const panic = Math.max(0, 1 - (t - bugsAt) / 2);
     bugs.forEach((bug) => {
-      const u = bug.userData as { phase: number; speed: number; radius: number };
+      const u = bug.userData as { phase: number; speed: number; radius: number; y?: number };
       const a = (still ? 0 : t * u.speed * (1 + panic * 5)) + u.phase;
-      bug.position.set(Math.cos(a) * u.radius, 0.0085, Math.sin(a) * u.radius);
+      bug.position.set(Math.cos(a) * u.radius, u.y ?? 0.0085, Math.sin(a) * u.radius);
       // Head first, whichever way round it is walking.
       bug.rotation.set(0, -a - (u.speed > 0 ? Math.PI / 2 : -Math.PI / 2), 0);
     });
@@ -2615,11 +3585,296 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
       s.material.opacity = Math.sin(k * Math.PI) * 0.9;
     });
 
+    // --- the bug that only comes out in the dark ---
+    if (rbState === 'hidden' && darkK > 0.7 && !locked && t > rbNextAt) {
+      rbState = 'run';
+      rbPick(rbBug.position);
+      rbPick(rbGoal);
+    }
+    if (rbState === 'run') {
+      if (darkK < 0.4) {
+        // The light is back: it is gone before you see where.
+        rbState = 'hidden';
+        rbBug.position.copy(RB_AWAY);
+        rbNextAt = t + 3;
+      } else if (t > rbPauseUntil) {
+        const dx = rbGoal.x - rbBug.position.x;
+        const dz = rbGoal.z - rbBug.position.z;
+        const far = Math.hypot(dx, dz);
+        const step = Math.min(far, 0.0042);
+        if (far < 0.006) {
+          // There: a short think, then somewhere else.
+          rbPick(rbGoal);
+          rbPauseUntil = t + 0.25 + Math.random() * 0.9;
+        } else {
+          rbBug.position.x += (dx / far) * step;
+          rbBug.position.z += (dz / far) * step;
+          rbBody.rotation.y = -Math.atan2(dz, dx);
+        }
+        rbBody.position.y = Math.abs(Math.sin(t * 30)) * 0.0015;
+      }
+      rbAura.material.opacity = 0.55 + 0.2 * Math.sin(t * 6);
+      rbHint.visible = true;
+      rbHint.position.y = 0.03 + Math.abs(Math.sin(t * 4.5)) * 0.014;
+    } else if (rbState === 'caught') {
+      rbHint.visible = false;
+      // Step one: lifted by the scruff, carried over the table in a slow arc, dropped into the jar.
+      const k = Math.min(1, (t - rbT0) / RB_TO_JAR);
+      bugJar.getWorldPosition(rbJar);
+      const carry = THREE.MathUtils.smoothstep(k, 0.12, 0.9);
+      rbBug.position.lerpVectors(rbFrom, rbJar, carry);
+      rbBug.position.y = rbFrom.y + (0.07 - rbFrom.y) * carry + Math.sin(Math.min(1, k / 0.9) * Math.PI) * 0.3 + Math.min(k / 0.12, 1) * 0.03 * (1 - carry);
+      rbBody.rotation.y += 0.22;
+      rbBody.rotation.z = Math.sin(t * 22) * 0.4;
+      rbAura.material.opacity = 0.9;
+      if (k >= 1) {
+        // Step two: the jar rattles, and a ticket comes out of it.
+        rbState = 'card';
+        rbT0 = t;
+        rbBug.position.copy(RB_AWAY);
+        rbBody.rotation.z = 0;
+        opts.onEvent?.('bug-jar');
+        bugsAt = now;
+        const guest = bugs[0].clone();
+        guest.userData = { phase: Math.random() * 6, speed: (bugs.length % 2 ? -1 : 1) * 0.8, radius: 0.012 + (bugs.length % 3) * 0.009, y: 0.022 + ((bugs.length - 5) % 4) * 0.012 };
+        bugJar.add(guest);
+        bugs.push(guest);
+      }
+    } else if (rbState === 'card') {
+      // Step three: the ticket flies to the board and pins itself there; only then is it written up.
+      const k = Math.min(1, (t - rbT0) / RB_CARD);
+      bugJar.getWorldPosition(rbJar);
+      rbJar.y += 0.16;
+      // Straight to the slot it will occupy, not just to the middle of the board.
+      const [slotCol, slotRow] = RB_SLOTS[Math.min(rbCaught, RB_SLOTS.length - 1)];
+      rbSlot.set(((30 + slotCol * 168 + 58) / 512 - 0.5) * 0.37, (0.5 - (54 + slotRow * 72 + 30) / 360) * 0.26, 0.0125);
+      rbBoardAt.copy(rbSlot);
+      board.localToWorld(rbBoardAt);
+      rbCard.material.opacity = 1;
+      rbCard.visible = true;
+      rbCard.position.lerpVectors(rbJar, rbBoardAt, ease(k));
+      rbCard.position.y += Math.sin(k * Math.PI) * 0.18;
+      rbCard.rotation.set(0, (1 - k) * 9, (1 - k) * 2);
+      rbCard.scale.setScalar(0.5 + 0.62 * Math.sin(Math.min(1, k * 1.2) * Math.PI * 0.5));
+      if (k >= 1) {
+        // Pinned: now it glows on the board for a few seconds before it is just another card.
+        rbState = 'glow';
+        rbT0 = t;
+        // From here it belongs to the board: same place, same tilt and same size as the card painted there,
+        // so the glow sits exactly on it.
+        board.add(rbCard);
+        rbCard.position.copy(rbSlot);
+        rbCard.rotation.set(0, 0, Math.min(rbCaught, RB_SLOTS.length - 1) % 2 ? -0.06 : 0.05);
+        rbCard.scale.set((116 / 512) * 0.37 / 0.075, (62 / 360) * 0.26 / 0.05, 1);
+        rbCaught += 1;
+        const fresh = colorTex(kanbanCanvas(rbCaught));
+        (boardFace.material as THREE.MeshBasicMaterial).map?.dispose();
+        (boardFace.material as THREE.MeshBasicMaterial).map = fresh;
+        boardFlashAt = t;
+        // The next one takes its time: ten to twenty seconds.
+        rbNextAt = t + 10 + Math.random() * 10;
+        if (opts.onPoke) {
+          const spot = rbBoardAt.clone();
+          spot.y += 0.16;
+          spot.project(camera);
+          const rect = canvas.getBoundingClientRect();
+          opts.onPoke('bugDone', ((spot.x + 1) / 2) * rect.width, ((1 - spot.y) / 2) * rect.height);
+        }
+      }
+    }
+    if (rbState === 'glow') {
+      const k = Math.min(1, (t - rbT0) / RB_GLOW);
+      const pulse = 0.5 + 0.5 * Math.sin(t * 7);
+      // A bright card that pulses, then fades to show the written-up one underneath.
+      rbCard.material.opacity = (1 - THREE.MathUtils.smoothstep(k, 0.25, 1)) * (0.75 + 0.25 * pulse);
+      rbCardAura.material.opacity = (1 - k * k) * (0.6 + 0.4 * pulse);
+      rbCardAura.scale.setScalar(0.2 + 0.07 * pulse);
+      if (k >= 1) { rbState = 'hidden'; rbCard.visible = false; scene.add(rbCard); rbCard.scale.setScalar(1); rbCardAura.material.opacity = 0.8; rbCardAura.scale.setScalar(0.2); }
+    }
+    // The board swells and glows while the new card settles in.
+    board.scale.setScalar(1 + 0.05 * Math.max(0, 1 - (t - boardFlashAt) / 0.9));
+    const boardFlash = Math.max(0, 1 - (t - boardFlashAt) / 5);
+
+    // --- things that happen by themselves, now and then, as well as when asked ---
+    if (autoNext < 0 && introK >= 1) autoNext = t + 24;
+    // Never while the book is open, opening or closing; afterwards the room waits a while before the next one.
+    if (locked && autoNext > 0) autoNext = Math.max(autoNext, t + 15);
+    if (autoNext > 0 && t > autoNext && !locked && !still && !document.hidden) {
+      autoNext = t + 45 + Math.random() * 40;
+      callVisitor();
+    }
+    // The owl: in from the night, smack into the glass, a dazed slide; the pane opens, it flutters back up,
+    // tosses the letter in, watches it go, and leaves.
+    if (owlStage > 0) {
+      const u = t - owlT0;
+      owl.visible = true;
+      const flap = 1 + Math.sin(t * 16) * 0.14;
+      const hang = Math.sin(t * 7) * 0.006;
+      if (u < 1.3) {
+        const k = u / 1.3;
+        // Always inside the window opening: outside it there is only wall.
+        owl.position.set(-0.13 + 0.03 * k, 0.4 - 0.1 * k * k + Math.sin(k * 9) * 0.01, 0.0075);
+        owl.scale.set((0.1 + 0.8 * k * k) * flap, 0.1 + 0.8 * k * k, 1);
+        owl.rotation.z = 0.25 * (1 - k);
+      } else if (u < 2.4) {
+        if (owlStage === 1) { owlStage = 2; opts.onEvent?.('owl-bump'); }
+        const k = (u - 1.3) / 1.1;
+        // Flattened against the pane, then peeling off and sliding down.
+        const squash = Math.max(0, 1 - k * 4);
+        owl.position.set(-0.1, 0.3 - 0.08 * k * k, 0.0075);
+        owl.scale.set(0.9 * (1 + 0.3 * squash), 0.9 * (1 - 0.25 * squash), 1);
+        owl.rotation.z = Math.sin(k * 14) * 0.14 * (1 - k);
+      } else if (u < 3.3) {
+        owlStage = Math.max(owlStage, 3);
+        const k = ease((u - 2.4) / 0.9);
+        owl.position.set(-0.1, 0.22 + 0.1 * k + hang, 0.0075);
+        owl.scale.set(0.9 * flap, 0.9, 1);
+        owl.rotation.z = 0;
+      } else if (u < 4.3) {
+        if (owlStage === 3) {
+          // Lets go of the letter: from here the envelope is the real one, flying in from the beak.
+          owlStage = 4;
+          owl.material.map = owlBare;
+          mailFromOwl = true;
+          startMail();
+        }
+        owl.position.set(-0.1, 0.32 + hang, 0.0075);
+        owl.scale.set(0.9 * flap, 0.9, 1);
+      } else if (u < 5.6) {
+        owlStage = 5;
+        const k = (u - 4.3) / 1.3;
+        owl.position.set(-0.1 + 0.02 * k, 0.32 + 0.1 * k, 0.0075);
+        owl.scale.set(0.9 * (1 - 0.88 * k) * flap, 0.9 * (1 - 0.88 * k), 1);
+        owl.rotation.z = 0.3 * k;
+      } else {
+        owlStage = 0;
+        owl.visible = false;
+      }
+      if (owlStage < 4) { owl.getWorldPosition(gazeAt); gazeUntil = t + 1.5; }
+    }
+    const MAIL_FLIGHT = 6.6;
+    if (mailState === 'fly') {
+      const k = Math.min(1, (t - mailT0) / MAIL_FLIGHT);
+      mailPath.getPoint(k * k * (3 - 2 * k), mailEnv.position);
+      // Small at first, as if arriving from far off beyond the window.
+      mailEnv.scale.setScalar(0.25 + 0.75 * THREE.MathUtils.smoothstep(k, 0, 0.2));
+      // Tumbling in the draught, flattening out as it comes down.
+      // The spin is added up, slower and slower, and the wobble dies away with it — so it settles
+      // instead of whipping round at the end.
+      const loose = 1 - THREE.MathUtils.smoothstep(k, 0.55, 0.97);
+      mailSpin += Math.min(0.05, Math.max(0, t - mailPrevT)) * 3.1 * loose;
+      mailEnv.rotation.set(Math.sin(t * 7.3) * 0.9 * loose, 0.3 + mailSpin, Math.sin(t * 5.1) * 0.7 * loose);
+      gazeAt.copy(mailEnv.position);
+      gazeUntil = t + 2.6;
+      if (k >= 1) { mailState = 'rest'; mailEnv.rotation.set(0, 0.3 + mailSpin, 0); opts.onEvent?.('mail-land'); }
+    }
+    mailPrevT = t;
+    mailAura.material.opacity = mailState === 'rest' ? 0.45 + 0.2 * Math.sin(t * 3) : 0;
+    // The window swings open to let the letter in, and shuts behind it.
+    const sashOpen = (mailState === 'fly' && t - mailT0 < 2.2) || (owlStage >= 2 && t - owlT0 > 2.3) ? 1 : 0;
+    sashK += (sashOpen - sashK) * 0.08;
+    windowSash.rotation.y = -1.3 * sashK;
+    gazeK += ((t < gazeUntil ? 1 : 0) - gazeK) * 0.07;
+    // A knock makes the hero start.
+    const jolt = (t - knockT0) / 0.5;
+    if (jolt >= 0 && jolt < 1) tomato.position.y = tomatoY + Math.sin(jolt * Math.PI) * 0.02;
+
+    if (!still) crtOn.offset.x = (t * 0.045) % 1;
+
+    const swing = t - portraitAt;
+    portrait.rotation.z = 0.03 + (swing >= 0 && swing < 4 ? Math.sin(swing * 9) * 0.16 * Math.exp(-swing * 1.9) : 0);
+
+    // The quick change: on with the hood as the light goes, off again as it returns (he spins while he does it).
+    // A puff of smoke, and when it clears he is dressed differently.
+    const puffK = (t - hoodPuffAt) / 0.75;
+    if (puffK > 0.3 && heroDark !== darkOn) heroDark = darkOn;
+    heroHood.visible = heroDark;
+    heroDay.visible = !heroDark;
+    heroGlow.visible = heroDark;
+    if (puffK >= 0 && puffK < 1) {
+      tomato.getWorldPosition(hoodPuff.position);
+      hoodPuff.position.y += 0.08;
+      hoodPuff.position.z += 0.06;
+      hoodPuff.scale.setScalar(0.12 + 0.34 * Math.sin(puffK * Math.PI * 0.5));
+      hoodPuff.material.opacity = Math.sin(puffK * Math.PI) * 0.95;
+      hoodPuff.material.rotation = puffK * 1.4;
+    } else {
+      hoodPuff.material.opacity = 0;
+    }
+
+    // Lights out: the room sinks into the dark and every glowing thing carries further.
+    // Timed, not per frame: on a slow machine the room must still go dark in about a second.
+    darkK += ((darkOn ? 1 : 0) - darkK) * Math.min(1, Math.max(0, t - darkT) * 3.2);
+    darkT = t;
+    // Exposure drops hard below, so the lamps are turned up to keep their own small pools of light.
+    const lift = 1 + 1.1 * darkK;
+    // When the book bursts open its light floods the room, lights out or not.
+    const flare = opening ? Math.max(burst, charge * 0.3) : 0;
+    const gloom = darkK * (1 - flare);
+    hemi.intensity *= 1 - gloom;
+    fill.intensity *= 1 - gloom;
+    moon.intensity *= 1 - darkK;
+    beam.material.opacity *= 1 - darkK;
+    // The candle stays lit but burns low: a pool of light on the table, not a lit room.
+    candleLight.intensity *= 1 - 0.8 * darkK;
+    // Exposure does the heavy lifting: lit surfaces sink, while screens, LEDs and flames (not tone-mapped) stay bright.
+    renderer.toneMappingExposure = 1 - 0.85 * gloom;
+    potionLight.intensity = (0.12 + (still ? 0 : 0.03 * Math.sin(t * 1.7))) * lift;
+    scene.fog!.color.setScalar(0).lerp(fogDay, 1 - darkK);
+    (scene.background as THREE.Color).copy(scene.fog!.color);
+    for (const l of [orbLight, crystalLight, cauldronLight, lanternLight, bookLight]) l.intensity *= lift;
+    // Night coding: the screen becomes the lamp, and the keyboard backlight cycles its colours.
+    screenLight.intensity *= 1 + 11 * darkK;
+    bookLight.intensity *= 1 - 0.7 * darkK;
+    bookGlow.material.opacity *= 1 - 0.65 * darkK;
+    screenLight.distance = 1.3 + 1.3 * darkK;
+    keyGlow.color.setHSL((t * 0.07) % 1, 0.9, 0.6);
+    keyGlow.intensity = 1.5 * darkK;
+    keyAura.material.color.copy(keyGlow.color);
+    keyAura.material.opacity = 0.7 * darkK;
+    for (const paper of papers) paper.mat.color.copy(paper.base).multiplyScalar(1 - 0.88 * darkK);
+    for (const fake of pretend) fake.mat.emissiveIntensity = fake.base * (1 - gloom);
+    scrollLight.intensity = 0.1 * lift;
+    cordLight.intensity = 0.1 * lift;
+    // The board lights up for a moment when a new card lands on it.
+    if (boardFlash > 0) (boardFace.material as THREE.MeshBasicMaterial).color.lerp(WHITE, boardFlash);
+    shutters.forEach(({ mesh, sign }) => {
+      mesh.visible = darkK > 0.004;
+      mesh.scale.x = sign * Math.max(0.001, ease(Math.min(1, darkK * 1.6)));
+    });
+    const tug = (t - cordAt) / 0.5;
+    // A spring, straight down and back: the bead bounces but never leaves the pointer.
+    const cordDt = Math.min(0.05, Math.max(0, t - cordT));
+    cordT = t;
+    if (!still) {
+      cordVel += (-cordAng * 130 - cordVel * 5.5) * cordDt;
+      cordAng += cordVel * cordDt;
+    } else {
+      cordAng = tug >= 0 && tug < 1 ? -Math.sin(tug * Math.PI) * 0.06 : 0;
+    }
+    cordPull.position.y = -1 + THREE.MathUtils.clamp(cordAng, -0.14, 0.05);
+    cordAura.material.opacity = 0.42 + (still ? 0 : 0.2 * Math.sin(t * 2.4)) + 0.25 * darkK;
+
+    // A lamp that is out lights nothing, so its shadow need not be drawn again (the candle's is six views of the room).
+    candleLight.shadow.autoUpdate = candleLight.intensity > 0.002 || !candleLight.shadow.map;
+    moon.shadow.autoUpdate = moon.intensity > 0.002 || !moon.shadow.map;
+    if (lowPower) {
+      renderer.shadowMap.autoUpdate = false;
+      renderer.shadowMap.needsUpdate = still || shadowFrame % 2 === 0;
+      shadowFrame += 1;
+    }
+
     ink.render(scene, camera);
   };
 
-  const loop = () => {
-    render();
+  // At most 60 pictures a second. On a 120 Hz screen the room would otherwise be drawn twice as often
+  // for no visible gain — and everything eased per frame would move twice as fast.
+  let lastDrawn = 0;
+  const loop = (ms: number) => {
+    if (ms - lastDrawn >= 1000 / 62) {
+      lastDrawn = ms;
+      render();
+    }
     frame = paused ? 0 : requestAnimationFrame(loop);
   };
   frame = requestAnimationFrame(loop);
@@ -2642,6 +3897,11 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
       progress = p;
       tween = null;
     };
+    // …and the fly-in at any point: __taleIntro(0.3).
+    (window as unknown as Record<string, unknown>).__taleEvent = (kind: string) => { if (kind === 'mail') startMail(); else if (kind === 'owl') startOwl(); else startKnock(); };
+    (window as unknown as Record<string, unknown>).__taleIntro = (k: number) => { introTween = null; introK = k; };
+    // For measuring: draw calls, textures, programs (renderer.info) and the scene itself.
+    (window as unknown as Record<string, unknown>).__talePerf = { renderer, scene, camera, render, poke: (id: string) => toys.find((toy) => toy.id === id)?.poke() };
   }
 
   let coverTex: THREE.CanvasTexture | null = null;
@@ -2683,15 +3943,31 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     },
     open() {
       locked = true;
+      // Whatever was going on stops here: the room behind the open book is still and tidy.
+      if (mailState === 'fly') { mailState = 'rest'; mailEnv.position.copy(MAIL_REST); mailEnv.rotation.set(0, 0.3, 0); mailEnv.scale.setScalar(1); }
+      owlStage = 0;
+      owl.visible = false;
+      if (rbState !== 'hidden') { rbState = 'hidden'; rbBug.position.copy(RB_AWAY); rbCard.visible = false; scene.add(rbCard); rbCard.scale.setScalar(1); }
+      gazeUntil = -1;
       hover = false;
       canvas.style.cursor = '';
       hoverToy = null;
       opts.onHover?.(null, 0, 0);
       opening = !opts.reducedMotion;
-      return run(1, opts.reducedMotion ? 0 : 3600).then(() => { opening = false; });
+      return run(1, opts.reducedMotion ? 0 : 3600).then(() => {
+        opening = false;
+        // The book's own light has just filled the room: leave the lights on from here.
+        if (darkOn) { darkOn = false; opts.onEvent?.('lights-on'); }
+      });
     },
     close() {
       return run(0, 900).then(() => { locked = false; });
+    },
+    setBugHint(text) {
+      paintBugHint(text);
+    },
+    visitor(kind) {
+      callVisitor(kind);
     },
     setPaused(next) {
       if (paused === next) return;

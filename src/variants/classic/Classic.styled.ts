@@ -561,6 +561,33 @@ export const Root = styled.div`
     text-transform: uppercase;
   }
   .project h3 { font-size: 1.18em; }
+  /* A rubber stamp slapped across a project that is not public yet. */
+  .stamp {
+    float: right;
+    margin: 0 0 6px 14px !important;
+    padding: 5px 12px 6px;
+    border: 3px double #b3261c;
+    border-radius: 6px;
+    color: #b3261c;
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    line-height: 1.15;
+    text-align: center;
+    text-transform: uppercase;
+    transform: rotate(-7deg);
+    opacity: 0.88;
+    /* Ink that did not take evenly. */
+    -webkit-mask-image: radial-gradient(circle at 30% 40%, #000 60%, rgba(0, 0, 0, 0.55) 100%), repeating-linear-gradient(33deg, #000 0 5px, rgba(0, 0, 0, 0.7) 5px 6px);
+    mask-image: radial-gradient(circle at 30% 40%, #000 60%, rgba(0, 0, 0, 0.55) 100%), repeating-linear-gradient(33deg, #000 0 5px, rgba(0, 0, 0, 0.7) 5px 6px);
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+  }
+  .stamp b { display: block; font-size: 14px; font-weight: 800; letter-spacing: 0.12em; }
+  .stamp span { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; }
+  /* Narrow phones: beside the heading the stamp leaves it one word per line, so it gets a line of its own. */
+  @media screen and (max-width: 560px) {
+    .stamp { float: none; width: fit-content; margin: -6px 0 8px auto !important; }
+  }
+
   .project .desc { margin-top: 0.35em; text-wrap: pretty; }
 
   .facts {
@@ -745,6 +772,12 @@ export const Root = styled.div`
     .facts { flex-direction: column; gap: 0.15em; }
 
     .top { right: 14px; bottom: 14px; }
+  }
+
+  /* Bigger targets for a thumb. */
+  @media screen and (pointer: coarse) {
+    .lang button { padding: 9px 11px; }
+    .btn { min-height: 36px; }
   }
 
   @media screen and (max-width: 380px) {

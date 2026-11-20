@@ -5,5 +5,5 @@ export const skillGroups = [
   { title: 'UI Libraries', tags: ['Mantine', 'Material UI', 'Tailwind', 'Ant Design'], core: ['Mantine', 'Material UI'] },
   { title: 'Tooling', tags: ['Storybook', 'Playwright', 'Jest', 'Vite', 'Webpack', 'Git'], core: ['Storybook', 'Playwright'] },
   { title: 'Delivery & DevOps', tags: ['Docker', 'GitHub Actions', 'GitLab CI', 'ArgoCD', 'Architecture', 'Hiring', 'Estimation'], core: ['Docker', 'GitHub Actions'] },
-  { title: 'AI', tags: ['Claude Code', 'Skills & subagents', 'MCP', 'Codex', 'Ollama / local LLM', 'RAG'], core: ['Claude Code', 'MCP'] },
+  { title: 'AI tools', tags: ['Claude Code', 'Skills & subagents', 'MCP', 'Codex', 'Ollama / local LLM', 'RAG'], core: ['Claude Code', 'MCP'] },
 ];

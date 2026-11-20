@@ -38,6 +38,19 @@ export interface TaleStrings {
   end: { title: string; narr: string; moral: string };
   contactNarr: string;
   cvTitle: string;
+  /** The book is in four parts; each opens with a plain line saying what is inside. */
+  partWord: string;
+  partNames: string[];
+  parts: {
+    hero: { title: string; note: string };
+    road: { title: string; note: string; list: string };
+    feats: { title: string; note: string };
+    tools: { title: string };
+  };
+  workOf: (n: number, total: number) => string;
+  featOf: (n: number, total: number) => string;
+  who: string;
+  did: string;
 }
 
 export const S: Record<Lang, TaleStrings> = {
@@ -98,6 +111,22 @@ export const S: Record<Lang, TaleStrings> = {
     },
     contactNarr: 'Send the Tomato a word, and a new chapter begins:',
     cvTitle: 'The same tale, told plainly',
+    partWord: 'Part',
+    partNames: ['one', 'two', 'three', 'four'],
+    parts: {
+      hero: { title: 'Who the Tomato is', note: 'The hero in brief: who he is, where he is from, and what the numbers say.' },
+      road: {
+        title: 'The road: where he worked',
+        note: 'Every job in order, from the first step to this very day. Each takes one spread: on the left — the role and the dates, on the right — what he did there.',
+        list: 'The whole road at a glance:',
+      },
+      feats: { title: 'The feats: what he built', note: 'Not jobs but things: separate projects seen close up — what was built, and with what.' },
+      tools: { title: 'The chest and a word to send' },
+    },
+    workOf: (n, total) => `Job ${n} of ${total}`,
+    featOf: (n, total) => `Project ${n} of ${total}`,
+    who: 'Role and dates',
+    did: 'What he did here',
   },
   ru: {
     title: 'Сказка о Сеньоре Помидоре Фронтенда',
@@ -156,5 +185,21 @@ export const S: Record<Lang, TaleStrings> = {
     },
     contactNarr: 'Пошлите Помидору весточку — и начнётся новая глава:',
     cvTitle: 'Та же сказка, но без прикрас',
+    partWord: 'Часть',
+    partNames: ['первая', 'вторая', 'третья', 'четвёртая'],
+    parts: {
+      hero: { title: 'Кто такой Помидор', note: 'Коротко о герое: кто он, откуда и что о нём говорят цифры.' },
+      road: {
+        title: 'Путь: где работал',
+        note: 'Все места работы по порядку — от первого шага до сегодняшнего дня. Каждому месту отведён один разворот: слева — должность и даты, справа — что там сделал.',
+        list: 'Весь путь одним взглядом:',
+      },
+      feats: { title: 'Подвиги: что построил', note: 'Здесь не места работы, а сами вещи: отдельные проекты крупным планом — что построено и на чём.' },
+      tools: { title: 'Сундук и весточка' },
+    },
+    workOf: (n, total) => `Место работы ${n} из ${total}`,
+    featOf: (n, total) => `Проект ${n} из ${total}`,
+    who: 'Должность и даты',
+    did: 'Что здесь сделал',
   },
 };

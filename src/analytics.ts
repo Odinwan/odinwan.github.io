@@ -4,13 +4,13 @@
  * set below, and never for visitors who have "Do Not Track" switched on.
  *
  * What is counted:
- *  - a page view per design opened, with the interface language  → /tale?lang=ru
+ *  - a page view per design opened, with the interface language  → /tale/ru
  *  - CV downloads: which PDF, from which design, in which language
  *  - a few events: language switched, the Tale book opened
  */
 
 /** The part before ".goatcounter.com" of your GoatCounter site. Empty = statistics off. */
-const GOATCOUNTER_CODE = '';
+const GOATCOUNTER_CODE: string = 'odinwan';
 
 interface GoatCounter {
   count(opts: { path: string; title?: string; event?: boolean }): void;
@@ -48,7 +48,8 @@ const send = (hit: { path: string; title?: string; event?: boolean }): void => {
 
 /** A design (or the chooser) was opened. */
 export const trackView = (variant: string | null, lang: string): void => {
-  send({ path: `/${variant ?? 'home'}?lang=${lang}`, title: `${variant ?? 'home'} (${lang})` });
+  // The language is part of the path, not a query string, so it shows as its own row in the dashboard.
+  send({ path: `/${variant ?? 'home'}/${lang}`, title: `${variant ?? 'home'} (${lang})` });
 };
 
 /** Something happened that is not a page: `name` reads like a path, e.g. "cv-download/fullstack/tale/ru". */
