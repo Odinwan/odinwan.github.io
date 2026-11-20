@@ -5,8 +5,6 @@ import { HeartIcon, DownloadIcon, MailIcon, ShareIcon, ArrowIcon } from './icons
 import Sheet, { SheetContext, SheetData } from './sheet';
 import { useLanguage } from '@hooks/useLanguage';
 import { t } from '../../translations';
-import VariantSwitcher from '../../variants/VariantSwitcher';
-import { setVariant } from '../../variants/variants';
 
 const LIKES_KEY = 'portfolio-likes';
 const DOUBLE_TAP_MS = 300;
@@ -210,7 +208,6 @@ const Reels: React.FC = () => {
           <a className="cv-big" href={CV_URL} download>↓ {tr.ui.downloadCv}</a>
           <CvAlt tr={tr} />
           <p className="keys">↑ ↓ · J K</p>
-          <VariantSwitcher className="designs" stacked />
         </aside>
 
         <div className="phone" style={paletteVars}>
@@ -289,10 +286,6 @@ const Reels: React.FC = () => {
             <button type="button" className="act" data-probe onClick={() => setLang(lang === 'en' ? 'ru' : 'en')}>
               <span className="ico lang">{lang === 'en' ? 'RU' : 'EN'}</span>
               <span className="lbl">{lang === 'en' ? 'Русский' : 'English'}</span>
-            </button>
-            <button type="button" className="act design" data-probe onClick={() => setVariant(null)}>
-              <span className="ico lang" aria-hidden="true">⊞</span>
-              <span className="lbl">{lang === 'en' ? 'Design' : 'Вид'}</span>
             </button>
             <div className="steps">
               <button type="button" className="act" onClick={() => goTo(active - 1)} disabled={active === 0} aria-label={tr.ui.prev}>

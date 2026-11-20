@@ -31,7 +31,7 @@ export const Root = styled.div`
 
   position: relative;
   height: 100%;
-  height: 100dvh;
+  height: var(--app-h, 100dvh);
   display: flex;
   justify-content: center;
   box-sizing: border-box;

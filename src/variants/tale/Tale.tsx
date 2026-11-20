@@ -105,9 +105,11 @@ interface TaleProps {
   onClose?: () => void;
   /** Page to open at; the scene opens the cover itself, so it starts past it. */
   startPage?: number;
+  /** Called whenever the page actually changes — the scene plays a page-turn sound. */
+  onTurn?: () => void;
 }
 
-const Tale: React.FC<TaleProps> = ({ onClose, startPage = 0 }) => {
+const Tale: React.FC<TaleProps> = ({ onClose, startPage = 0, onTurn }) => {
   const { lang, setLang } = useLanguage();
   useFonts(FONTS);
   const wide = useMedia(WIDE);
@@ -129,6 +131,7 @@ const Tale: React.FC<TaleProps> = ({ onClose, startPage = 0 }) => {
     if (wide) {
       const to = spreadOf(next);
       if (to === spread) { setPage(next); return; }
+      onTurn?.();
       const d = to > spread ? 1 : -1;
       flipId.current += 1;
       setFlip(reduced ? null : { from: spread, dir: d, id: flipId.current });
@@ -137,9 +140,10 @@ const Tale: React.FC<TaleProps> = ({ onClose, startPage = 0 }) => {
       return;
     }
     if (next === page) return;
+    onTurn?.();
     setDir(next > page ? 1 : -1);
     setPage(next);
-  }, [last, wide, reduced, spread, page]);
+  }, [last, wide, reduced, spread, page, onTurn]);
 
   const prev = useCallback(() => go(wide ? firstOfSpread(spread - 1) : page - 1), [go, wide, spread, page]);
   const next = useCallback(() => go(wide ? firstOfSpread(Math.min(spread + 1, lastSpread)) : page + 1), [go, wide, spread, lastSpread, page]);
@@ -247,7 +251,6 @@ const Tale: React.FC<TaleProps> = ({ onClose, startPage = 0 }) => {
     <Root lang={lang} className={onClose ? 'in-scene' : undefined}>
       <header className="top">
         <h1 className="brand">{s.title}</h1>
-        <Switcher />
         <div className="lang" role="group" aria-label={s.language}>
           {LANGS.map((l) => (
             <button key={l} type="button" aria-pressed={l === lang} onClick={() => setLang(l)}>
@@ -269,6 +272,14 @@ const Tale: React.FC<TaleProps> = ({ onClose, startPage = 0 }) => {
         {bookNode}
       </main>
 
+      {/* Big arrows either side of the book: the obvious way to turn a page. */}
+      <button type="button" className="side prev" onClick={prev} disabled={atStart} aria-label={s.prev} title={s.prev}>
+        <Arrow back />
+      </button>
+      <button type="button" className="side next" onClick={next} disabled={atEnd} aria-label={s.next} title={s.next}>
+        <Arrow />
+      </button>
+
       <nav className="bar" aria-label={s.bookLabel}>
         <div className="progress" aria-hidden="true">
           <span style={{ transform: `scaleX(${last > 0 ? shownLast / last : 0})` }} />
@@ -287,7 +298,10 @@ const Tale: React.FC<TaleProps> = ({ onClose, startPage = 0 }) => {
           </svg>
           {s.toContents}
         </button>
-        <p className="count">{label}</p>
+        <p className="count">
+          {label}
+          <span className="keys"> · {wide ? s.keysHint : s.swipeHint}</span>
+        </p>
         <button type="button" className="round" onClick={next} disabled={atEnd} aria-label={s.next} title={s.next}>
           <Arrow />
         </button>

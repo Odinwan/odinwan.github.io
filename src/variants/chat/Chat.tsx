@@ -252,7 +252,7 @@ const Chat: React.FC = () => {
     if (!vv || !root) return undefined;
     const fit = () => {
       const covered = vv.scale < 1.05 && window.innerHeight - vv.height > 120;
-      const height = covered ? `${Math.round(vv.height)}px` : '';
+      const height = covered ? `${Math.round(vv.height - root.getBoundingClientRect().top)}px` : '';
       if (root.style.height === height) return;
       root.style.height = height;
       if (covered) window.scrollTo(0, 0);
@@ -382,7 +382,6 @@ const Chat: React.FC = () => {
               ))}
             </div>
 
-            <Switcher className="switch" />
           </header>
 
           <div className="stage">

@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLanguage } from '@hooks/useLanguage';
 import { t } from '../../translations';
-import VariantSwitcher from '../VariantSwitcher';
 import { useFonts } from '../useFonts';
 import Tale from '../tale/Tale';
 import { Tomato } from '../tale/Tomato';
 import { createCoverCanvas, paintCover, paintEndpaper, paintFirstPage, svgToImage } from './cover';
 import FlatRoom from './FlatRoom';
-import { QUIPS } from './quips';
+import { NAMES, QUIPS } from './quips';
+import { isSoundOn, play, preloadSounds, setSoundOn } from './sfx';
+import { CV_URL } from '../../data/links';
+import { trackEvent } from '../../analytics';
 import { Reader, Root } from './Scene.styled';
 import type { Stage } from './stage3d';
 
@@ -17,6 +19,25 @@ const strings = {
     open: 'Open the book',
     hint: 'Open the book to read. The duck, the laptop and the rest like to be poked.',
     scene: 'A candle-lit table with a storybook on it',
+    helpTitle: 'What to do here',
+    help: [
+      'Click the book to open it and read the CV',
+      'Poke things: the duck, the cat, the laptop, the chest — they answer back',
+      'The glowing scroll is the CV itself — click it to download the PDF',
+      'In the book: arrows or ← → turn pages, Esc closes it',
+    ],
+    helpTouch: [
+      'Tap the book to open it and read the CV',
+      'Tap things: the duck, the cat, the laptop, the chest — they answer back',
+      'The glowing scroll is the CV itself — tap it to download the PDF',
+      'In the book: swipe or tap the arrows to turn pages',
+    ],
+    loading: 'The tale is opening',
+    soundOn: 'Sound on',
+    soundOff: 'Sound off',
+    download: 'Take the CV scroll (PDF)',
+    helpOpen: 'How to play',
+    helpClose: 'Hide the hint',
     lead: 'Once upon a time there lived a Senior Tomato of the Frontend…',
     next: 'And this is the tale of his road.',
     font: "'Uncial Antiqua'",
@@ -26,6 +47,25 @@ const strings = {
     open: 'Открыть книгу',
     hint: 'Откройте книгу, чтобы читать. Уточку, ноутбук и всё остальное можно потрогать.',
     scene: 'Стол при свече, на нём лежит книга сказок',
+    helpTitle: 'Что тут можно делать',
+    help: [
+      'Нажмите на книгу — она откроется, внутри резюме',
+      'Тыкайте в предметы: уточка, кот, ноутбук, сундук — они отвечают',
+      'Светящийся свиток — это само резюме: клик скачает PDF',
+      'В книге: стрелки или ← → листают страницы, Esc закрывает',
+    ],
+    helpTouch: [
+      'Нажмите на книгу — она откроется, внутри резюме',
+      'Тапайте по предметам: уточка, кот, ноутбук, сундук — они отвечают',
+      'Светящийся свиток — это само резюме: тап скачает PDF',
+      'В книге: листайте свайпом или стрелками',
+    ],
+    loading: 'Сказка открывается',
+    soundOn: 'Звук включён',
+    soundOff: 'Звук выключен',
+    download: 'Забрать свиток с резюме (PDF)',
+    helpOpen: 'Как играть',
+    helpClose: 'Скрыть подсказку',
     lead: 'Жил-был на свете Сеньор Помидор Фронтенда…',
     next: 'А это сказка о его пути-дороге.',
     font: "'Ruslan Display'",
@@ -49,6 +89,9 @@ const Scene: React.FC = () => {
 
   const [phase, setPhase] = useState<Phase>('table');
   const [mode, setMode] = useState<Mode>('loading');
+  /** The loader is gone and the camera has finished gliding in. */
+  const [arrived, setArrived] = useState(false);
+  const [loaderGone, setLoaderGone] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const openBtnRef = useRef<HTMLButtonElement>(null);
@@ -63,14 +106,43 @@ const Scene: React.FC = () => {
   const [bubble, setBubble] = useState<{ id: string; n: number; x: number; y: number; key: number } | null>(null);
   const quipCount = useRef<Record<string, number>>({});
   const bubbleTimer = useRef(0);
+  const [tag, setTag] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [sound, setSound] = useState(isSoundOn);
+  const toggleSound = () => { const next = !sound; setSound(next); setSoundOn(next); if (next) { preloadSounds(); play('lantern'); } };
+  const download = useCallback(() => {
+    play('cvScroll');
+    const link = document.createElement('a');
+    link.href = CV_URL;
+    // An explicit, human file name rather than whatever the browser derives.
+    link.download = 'Vladislav_Cupnii_CV.pdf';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }, []);
+
   const say = useCallback((id: string, x: number, y: number) => {
+    if (id === 'cvScroll') download(); else play(id);
     if (!QUIPS[id]) return;
     const n = quipCount.current[id] ?? 0;
     quipCount.current[id] = n + 1;
     setBubble({ id, n, x, y, key: Date.now() });
     window.clearTimeout(bubbleTimer.current);
     bubbleTimer.current = window.setTimeout(() => setBubble(null), 2900);
-  }, []);
+  }, [download]);
+  // The "what to do here" plaque: open on first visit (on big screens), then remembered.
+  const [help, setHelp] = useState(() => {
+    try {
+      const saved = localStorage.getItem('tale-help');
+      if (saved) return saved === 'open';
+    } catch { /* noop */ }
+    return window.matchMedia('(min-width: 701px)').matches;
+  });
+  const toggleHelp = (next: boolean) => {
+    setHelp(next);
+    try { localStorage.setItem('tale-help', next ? 'open' : 'closed'); } catch { /* noop */ }
+  };
+  const touch = window.matchMedia('(pointer: coarse)').matches;
+
   const sayRef = useRef(say);
   sayRef.current = say;
 
@@ -78,6 +150,8 @@ const Scene: React.FC = () => {
     if (phaseRef.current !== 'table') return;
     window.clearTimeout(timer.current);
     setBubble(null);
+    play('bookOpen');
+    trackEvent('tale/book-open');
     const stage = stageRef.current;
     setPhase('opening');
     if (stage) {
@@ -94,6 +168,7 @@ const Scene: React.FC = () => {
     window.clearTimeout(timer.current);
     const done = () => { setPhase('table'); openBtnRef.current?.focus({ preventScroll: true }); };
     const stage = stageRef.current;
+    play('bookClose');
     setPhase('closing');
     if (stage) {
       stage.setPaused(false);
@@ -105,6 +180,8 @@ const Scene: React.FC = () => {
     }
   }, []);
 
+  const turn = useCallback(() => play('page'), []);
+
   const openRef = useRef(open);
   openRef.current = open;
 
@@ -114,6 +191,7 @@ const Scene: React.FC = () => {
     if (!canvas) return;
     let cancelled = false;
     let stage: Stage | null = null;
+    const startedAt = performance.now();
 
     import('./stage3d')
       .then(({ createStage }) => {
@@ -121,12 +199,26 @@ const Scene: React.FC = () => {
         stage = createStage(canvas, {
           onBookClick: () => openRef.current(),
           onPoke: (id, x, y) => sayRef.current(id, x, y),
+          onHover: (id, x, y) => setTag(id ? { id, x, y } : null),
           reducedMotion: reducedMotion(),
         });
         stageRef.current = stage;
         setMode('3d');
+        preloadSounds();
+        // Keep the loader up while the first frames compile, and never just flash it.
+        const shown = performance.now() - startedAt;
+        window.setTimeout(() => {
+          if (cancelled || !stage) return;
+          setLoaderGone(true);
+          void stage.intro().then(() => { if (!cancelled) setArrived(true); });
+        }, Math.max(700, 1400 - shown));
       })
-      .catch(() => { if (!cancelled) setMode('flat'); });
+      .catch(() => {
+        if (cancelled) return;
+        setMode('flat');
+        setLoaderGone(true);
+        setArrived(true);
+      });
 
     return () => {
       cancelled = true;
@@ -182,15 +274,23 @@ const Scene: React.FC = () => {
     return () => { cancelled = true; };
   }, [mode, s, tr.intro.name]);
 
-  const atTable = phase === 'table';
+  const atTable = phase === 'table' && arrived;
 
   return (
     <>
-      <Root className={`phase-${phase} mode-${mode}`} style={{ '--fairy': s.font } as React.CSSProperties}>
+      <Root className={`phase-${phase} mode-${mode}${loaderGone ? ' shown' : ''}`} style={{ '--fairy': s.font } as React.CSSProperties}>
         <canvas className="gl" ref={canvasRef} role="img" aria-label={s.scene} />
         <div className="paper" aria-hidden="true" />
+        {!loaderGone && (
+          <div className="loader" role="status">
+            <Tomato prop="wave" crown className="loader-hero" />
+            <p>{s.loading}<span className="dots"><i>.</i><i>.</i><i>.</i></span></p>
+            <span className="loader-bar"><i /></span>
+          </div>
+        )}
         <div className="vignette" aria-hidden="true" />
         <div className="dim" aria-hidden="true" />
+        <div className="flash" aria-hidden="true" />
 
         {mode === 'flat' && (
           <FlatRoom label={s.scene} title={s.title} author={tr.intro.name} disabled={!atTable} onOpen={open} />
@@ -220,18 +320,44 @@ const Scene: React.FC = () => {
           );
         })()}
 
+        {atTable && tag && !bubble && NAMES[tag.id] && (
+          <span className="tag" style={{ left: Math.min(Math.max(tag.x, 70), window.innerWidth - 70), top: Math.max(tag.y, 70) }}>
+            {NAMES[tag.id][lang]}
+          </span>
+        )}
+
         {atTable && (
           <>
             <header className="bar">
-              <VariantSwitcher className="variants" />
+              <button
+                type="button"
+                className="lang sound"
+                onClick={toggleSound}
+                aria-pressed={sound}
+                aria-label={sound ? s.soundOn : s.soundOff}
+                title={sound ? s.soundOn : s.soundOff}
+              >
+                {sound ? '♪' : <s>♪</s>}
+              </button>
               <button type="button" className="lang" onClick={() => setLang(lang === 'en' ? 'ru' : 'en')}>
                 {lang === 'en' ? 'RU' : 'EN'}
               </button>
             </header>
             <p className="hint">
               <button type="button" ref={openBtnRef} onClick={open}>{s.open}</button>
-              <span>{s.hint}</span>
+              <button type="button" className="second" onClick={download}>↓ {s.download}</button>
             </p>
+            {help ? (
+              <aside className="help" aria-label={s.helpTitle}>
+                <button type="button" className="help-x" onClick={() => toggleHelp(false)} aria-label={s.helpClose} title={s.helpClose}>✕</button>
+                <h2>{s.helpTitle}</h2>
+                <ul>
+                  {(touch ? s.helpTouch : s.help).map((line) => <li key={line}>{line}</li>)}
+                </ul>
+              </aside>
+            ) : (
+              <button type="button" className="help-open" onClick={() => toggleHelp(true)} aria-label={s.helpOpen} title={s.helpOpen}>?</button>
+            )}
           </>
         )}
       </Root>
@@ -239,7 +365,7 @@ const Scene: React.FC = () => {
       {/* Outside Root on purpose: the book reader has its own styles and class names. */}
       {(phase === 'reading' || phase === 'closing') && (
         <Reader className={phase === 'closing' ? 'closing' : ''}>
-          <Tale onClose={close} startPage={1} />
+          <Tale onClose={close} startPage={1} onTurn={turn} />
         </Reader>
       )}
     </>

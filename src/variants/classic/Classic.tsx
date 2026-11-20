@@ -152,7 +152,7 @@ const Classic: React.FC = () => {
       <PrintReset />
 
       <div className="toolbar">
-        <Switcher />
+        <span className="toolbar-name">{c.intro.name}</span>
 
         <div className="tools" role="group" aria-label={s.toolbar}>
           <div className="lang" role="group" aria-label={s.language}>

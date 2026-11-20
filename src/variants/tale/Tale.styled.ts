@@ -52,8 +52,7 @@ export const Root = styled.div`
 
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  height: 100dvh;
+  height: var(--app-h, 100dvh);
   overflow: hidden;
   background:
     radial-gradient(120% 90% at 50% 40%, rgba(255, 214, 150, 0.16), transparent 60%),
@@ -725,7 +724,13 @@ export const Root = styled.div`
     cursor: pointer;
     transition: background 0.15s ease, opacity 0.15s ease;
   }
-  .round { width: 44px; }
+  .round { width: 52px; height: 44px; border-color: var(--gold); background: var(--gold); color: #2a1608; }
+  .round:hover:not(:disabled) { background: #f7d98a !important; }
+  .round:disabled { background: rgba(253, 241, 214, 0.06); color: inherit; border-color: rgba(253, 241, 214, 0.35); }
+  .keys { opacity: 0.7; }
+
+  /* Side arrows live beside the book on wide screens; phones use the bar. */
+  .side { display: none; }
   .pill { padding: 0 14px; }
   .pill svg { color: var(--tomato-bright); }
   .round:hover:not(:disabled), .pill:hover { background: rgba(253, 241, 214, 0.16); }
@@ -765,8 +770,33 @@ export const Root = styled.div`
     .stage {
       display: grid;
       place-items: center;
-      margin: 14px 34px 12px;
+      margin: 14px 86px 12px;
       container-type: size;
+    }
+
+    .side {
+      position: absolute;
+      top: 50%;
+      z-index: 3;
+      display: grid;
+      place-items: center;
+      width: 58px;
+      height: 58px;
+      margin-top: -29px;
+      border: 2px solid #2a1608;
+      border-radius: 50%;
+      background: var(--gold);
+      color: #2a1608;
+      box-shadow: 0 5px 0 rgba(42, 22, 8, 0.55), 0 12px 22px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.15s ease;
+
+      svg { width: 28px; height: 28px; }
+      &.prev { left: 16px; }
+      &.next { right: 16px; }
+      &:hover:not(:disabled) { transform: translateY(-2px) scale(1.05); background: #f7d98a; }
+      &:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 2px 0 rgba(42, 22, 8, 0.55), 0 6px 12px rgba(0, 0, 0, 0.4); }
+      &:disabled { opacity: 0.25; cursor: default; }
     }
 
     .book {
@@ -868,7 +898,7 @@ export const Root = styled.div`
   }
 
   @media ${DESK} and (max-height: 620px) {
-    .stage { margin: 8px 30px 8px; }
+    .stage { margin: 8px 82px 8px; }
     .page { padding-top: 14px; padding-bottom: 8px; }
   }
 

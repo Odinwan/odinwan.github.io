@@ -16,6 +16,8 @@ export interface Stage {
   setPages(firstPage: HTMLCanvasElement, endpaper: HTMLCanvasElement): void;
   /** The picture in the frame on the wall. */
   setPortrait(art: HTMLCanvasElement): void;
+  /** The opening shot: the camera glides in from the back of the room to your seat at the table. */
+  intro(): Promise<void>;
   open(): Promise<void>;
   close(): Promise<void>;
   /** Stops rendering while the book is being read. */
@@ -25,6 +27,8 @@ export interface Stage {
 
 export interface StageOptions {
   onBookClick(): void;
+  /** The pointer moved onto a prop (or the book, id "book"), or off everything (null). */
+  onHover?(id: string | null, x: number, y: number): void;
   /** A prop was clicked; x/y are where its top is on screen, in CSS pixels of the canvas. */
   onPoke?(id: string, x: number, y: number): void;
   reducedMotion: boolean;
@@ -298,6 +302,28 @@ const kanbanCanvas = (): HTMLCanvasElement => {
   return c;
 };
 
+/** Light pouring upward: bright at the bottom, gone at the top, even all the way round. */
+const pillarCanvas = (): HTMLCanvasElement => {
+  const [c, g] = makeCanvas(64, 256);
+  const up = g.createLinearGradient(0, 256, 0, 0);
+  // Starts from nothing at the very bottom, so the glow has no straight lower edge.
+  up.addColorStop(0, 'rgba(255,255,255,0)');
+  up.addColorStop(0.14, 'rgba(255,255,255,0.8)');
+  up.addColorStop(0.45, 'rgba(255,255,255,0.32)');
+  up.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = up;
+  g.fillRect(0, 0, 64, 256);
+  // Soft sides: it is a glow, not a tube.
+  g.globalCompositeOperation = 'destination-in';
+  const across = g.createLinearGradient(0, 0, 64, 0);
+  across.addColorStop(0, 'rgba(0,0,0,0)');
+  across.addColorStop(0.5, 'rgba(0,0,0,1)');
+  across.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = across;
+  g.fillRect(0, 0, 64, 256);
+  return c;
+};
+
 const pageEdgeCanvas = (): HTMLCanvasElement => {
   const [c, g] = makeCanvas(64, 256);
   const r = seeded(5);
@@ -552,7 +578,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#0d0914');
-  scene.fog = new THREE.Fog('#0d0914', 2.2, 5.5);
+  scene.fog = new THREE.Fog('#0d0914', 3.2, 8.5);
 
   // Soft image-based light so glazed and metal surfaces have something to reflect.
   const pmrem = new THREE.PMREMGenerator(renderer);
@@ -580,6 +606,47 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   scene.add(wall);
 
   const darkWood = toon({ color: '#2a170f', roughness: 0.7 });
+
+  // Side walls and a floor, so the room is closed when the camera pulls back.
+  for (const sign of [-1, 1]) {
+    const side = new THREE.Mesh(
+      new THREE.PlaneGeometry(6, 4),
+      toon({ map: colorTex(wood, [3.4, 2.2]), color: '#5a5878', outline: false, rim: 0 }),
+    );
+    side.position.set(sign * 2.05, 1.2, 1.2);
+    side.rotation.y = -sign * Math.PI / 2;
+    side.receiveShadow = true;
+    scene.add(side);
+  }
+  const floorBoards = new THREE.Mesh(
+    new THREE.PlaneGeometry(4.2, 6),
+    toon({ map: colorTex(wood, [3, 4]), color: '#4a3a44', outline: false, rim: 0 }),
+  );
+  floorBoards.rotation.x = -Math.PI / 2;
+  floorBoards.position.set(0, -0.82, 1.2);
+  scene.add(floorBoards);
+  // Barrels and crates in the corners beside the table.
+  const barrelWood = toon({ color: '#7a4a26' });
+  const hoop = toon({ color: '#3a3038', gloss: 0.5 });
+  for (const [x, z, h] of [[-1.82, -0.55, 0.74], [-1.86, 0.15, 0.6], [1.84, -0.4, 0.74], [1.8, 0.35, 0.56]]) {
+    const barrel = new THREE.Group();
+    const profile = [[0, 0], [0.2, 0], [0.25, h * 0.5], [0.2, h], [0, h]].map(([px, py]) => new THREE.Vector2(px, py));
+    barrel.add(new THREE.Mesh(new THREE.LatheGeometry(new THREE.SplineCurve(profile.slice(1, 4)).getPoints(10).concat([new THREE.Vector2(0, h)]), 24), barrelWood));
+    for (const k of [0.22, 0.78]) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.228, 0.012, 8, 28), hoop);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = h * k;
+      barrel.add(ring);
+    }
+    barrel.position.set(x, -0.82, z);
+    scene.add(shadow(barrel));
+  }
+  for (const [x, z, sz, ry] of [[-1.72, 0.75, 0.42, 0.3], [1.74, 0.95, 0.46, -0.25], [1.78, 0.95, 0.3, 0.5]]) {
+    const crate = new THREE.Mesh(new RoundedBoxGeometry(sz, sz, sz, 2, 0.012), toon({ color: '#8a5a2c' }));
+    crate.position.set(x, -0.82 + sz / 2 + (sz === 0.3 ? 0.46 : 0), z);
+    crate.rotation.y = ry;
+    scene.add(shadow(crate));
+  }
 
   const windowGroup = new THREE.Group();
   {
@@ -933,7 +1000,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   quill.rotation.set(0.25, 0.7, -0.5);
   writing.add(quill);
   // Left of where the opened cover comes to rest.
-  writing.position.set(-0.72, 0, -0.34);
+  writing.position.set(-0.52, 0, -0.38);
   scene.add(shadow(writing));
 
   /* ----- toadstools on a tuft of moss ----- */
@@ -1013,7 +1080,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   tomato.add(stem);
   tomato.position.set(0.015, 0.066 + 0.03, 0.01);
   stack.add(tomato);
-  stack.position.set(-0.36, 0, -0.5);
+  stack.position.set(-0.3, 0, -0.58);
   scene.add(shadow(stack));
 
   /* ----- a lived-in room: curios on a shelf, a portrait, a lantern, bunting ----- */
@@ -1125,31 +1192,37 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   lantern.position.set(-1.14, 0.72, -1.05);
   scene.add(lantern);
 
-  // Bunting across the wall.
+  // Bunting along the wall — strung from beside the window to the corner, never across the glass.
   const bunting = new THREE.Group();
-  const FLAGS = 15;
-  const sag = (k: number) => 0.86 - Math.sin(k * Math.PI) * 0.09;
+  const FLAGS = 12;
   const flagColors = ['#d8402a', '#e9b44c', '#3f8a5a', '#3b62b8', '#9a5bd6'];
   const flags: THREE.Mesh[] = [];
   for (let i = 0; i < FLAGS; i++) {
-    const k = (i + 0.5) / FLAGS;
     const tri = new THREE.Shape();
     tri.moveTo(-0.05, 0);
     tri.lineTo(0.05, 0);
     tri.lineTo(0, -0.11);
     tri.lineTo(-0.05, 0);
     const flag = new THREE.Mesh(new THREE.ShapeGeometry(tri), toon({ color: flagColors[i % flagColors.length], side: THREE.DoubleSide }));
-    flag.position.set(-1.35 + k * 2.7, sag(k), 0);
     flags.push(flag);
     bunting.add(flag);
   }
-  const cord = new THREE.Mesh(
-    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(Array.from({ length: 21 }, (_, i) => new THREE.Vector3(-1.35 + (i / 20) * 2.7, sag(i / 20), 0))), 40, 0.003, 6),
-    iron,
-  );
+  const cord = new THREE.Mesh(new THREE.BufferGeometry(), iron);
   bunting.add(cord);
-  bunting.position.z = -1.27;
+  bunting.position.z = -1.22;
   scene.add(bunting);
+  const hangBunting = (x0: number, x1: number) => {
+    const sag = (k: number) => 0.87 - Math.sin(k * Math.PI) * 0.08;
+    flags.forEach((flag, i) => {
+      const k = (i + 0.5) / FLAGS;
+      flag.position.set(x0 + k * (x1 - x0), sag(k), 0);
+    });
+    cord.geometry.dispose();
+    cord.geometry = new THREE.TubeGeometry(
+      new THREE.CatmullRomCurve3(Array.from({ length: 17 }, (_, i) => new THREE.Vector3(x0 + (i / 16) * (x1 - x0), sag(i / 16), 0))),
+      32, 0.003, 6,
+    );
+  };
 
   /* ----- more things on the table ----- */
   // A treasure chest at the back; click it and it opens.
@@ -1205,9 +1278,12 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   hatBand.rotation.x = Math.PI / 2;
   hatBand.position.y = 0.018;
   hat.add(brim, crownCone, hatBand);
-  hat.position.set(-0.84, 0, -0.6);
+  hat.scale.setScalar(0.72);
+  hat.position.set(0.03, 0.064, 0.062);
+  hat.rotation.y = 0.4;
   const hatY = hat.position.y;
-  scene.add(shadow(hat));
+  shadow(hat);
+  chestLid.add(hat);
 
   // Glowing crystals.
   const crystals = new THREE.Group();
@@ -1334,7 +1410,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   const cauldronLight = new THREE.PointLight('#7dff5a', 0.14, 1.3, 1);
   cauldronLight.position.y = 0.2;
   cauldron.add(cauldronLight);
-  cauldron.position.set(-0.6, 0, -0.8);
+  cauldron.position.set(-0.6, 0, -0.9);
   scene.add(shadow(cauldron));
 
   // A wand left lying about.
@@ -1405,7 +1481,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     eye.position.set(0.042, 0.072, z);
     duck.add(eye);
   }
-  duck.position.set(0.2, 0, 0.1);
+  duck.position.set(0.4, 0, -0.36);
   duck.rotation.y = -0.6;
   duck.scale.setScalar(0.82);
   scene.add(shadow(duck));
@@ -1641,6 +1717,194 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   const caseRight = makeCase(1);
   const robotY = robot.position.y;
 
+  // A jar of bugs, safely caught. Bugs: under control.
+  const bugJar = new THREE.Group();
+  const jarGlass = new THREE.Mesh(
+    new THREE.LatheGeometry([[0, 0], [0.05, 0], [0.056, 0.006], [0.056, 0.1], [0.046, 0.112], [0.046, 0.122]].map(([x, y]) => new THREE.Vector2(x, y)), 40),
+    toon({ color: '#eafcff', transparent: true, opacity: 0.2, gloss: 1, side: THREE.DoubleSide, depthWrite: false, outline: false }),
+  );
+  const jarLid = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.016, 28), toon({ color: '#c8a23a', gloss: 0.9 }));
+  jarLid.position.y = 0.128;
+  for (let i = 0; i < 5; i++) {
+    // Air holes: the bugs are contained, not mistreated.
+    const hole = new THREE.Mesh(new THREE.CircleGeometry(0.004, 10), new THREE.MeshBasicMaterial({ color: '#2a1810' }));
+    hole.rotation.x = -Math.PI / 2;
+    hole.position.set(Math.cos(i * 1.257) * 0.026, 0.1365, Math.sin(i * 1.257) * 0.026);
+    bugJar.add(hole);
+  }
+  const jarTag = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.07, 0.035),
+    new THREE.MeshBasicMaterial({ map: colorTex(labelCanvas('BUGS', '#f4e8c8', '#a3261c')) }),
+  );
+  jarTag.position.set(0, 0.062, 0.0572);
+  bugJar.add(jarGlass, jarLid, jarTag);
+  const bugColors = ['#c8281e', '#2f8a3a', '#1f1a22', '#d8862a', '#3b62b8'];
+  const bugs = bugColors.map((color, i) => {
+    const bug = new THREE.Group();
+    const shell = ball(0.0095, toon({ color, gloss: 0.9 }), 0, 0, 0, 1.25, 0.7, 0.9);
+    const head = ball(0.005, toon({ color: '#16101a' }), 0.012, 0, 0);
+    bug.add(shell, head);
+    for (const side of [-1, 1]) {
+      for (const dx of [-0.006, 0, 0.006]) {
+        bug.add(box(0.0012, 0.0012, 0.009, new THREE.MeshBasicMaterial({ color: '#16101a' }), dx, -0.003, side * 0.009));
+      }
+    }
+    // Each keeps to its own ring on the jar floor, so they never pile into one another or the glass.
+    bug.userData = { phase: i * 1.3, speed: (i % 2 ? -1 : 1) * (0.5 + (i % 3) * 0.2), radius: [0.01, 0.021, 0.032, 0.021, 0.032][i] };
+    bugJar.add(bug);
+    return bug;
+  });
+  bugJar.position.set(0.2, 0, -0.56);
+  scene.add(shadow(bugJar));
+  jarGlass.castShadow = false;
+
+  // A mechanical computer: gears, pistons and a combustion engine where the CPU should be.
+  const engine = new THREE.Group();
+  const copper = toon({ color: '#b5642a', gloss: 0.8 });
+  const steel = toon({ color: '#6a7088', gloss: 0.7 });
+  const gearGeo = (outer: number, teeth: number, depth = 0.01): THREE.ExtrudeGeometry => {
+    const shape = new THREE.Shape();
+    const steps = teeth * 4;
+    for (let i = 0; i <= steps; i++) {
+      const tooth = i % 4 < 2;
+      const rad = tooth ? outer : outer * 0.8;
+      const a = (i / steps) * Math.PI * 2;
+      if (i === 0) shape.moveTo(Math.cos(a) * rad, Math.sin(a) * rad);
+      else shape.lineTo(Math.cos(a) * rad, Math.sin(a) * rad);
+    }
+    const hole = new THREE.Path();
+    hole.absarc(0, 0, outer * 0.22, 0, Math.PI * 2, true);
+    shape.holes.push(hole);
+    const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false });
+    geo.translate(0, 0, -depth / 2);
+    return geo;
+  };
+  // An ordinary PC tower — except the side window shows gears where the fans should be,
+  // and there is a small combustion engine bolted to the lid.
+  const caseMat = toon({ color: '#343848', gloss: 0.35 });
+  const caseDark = toon({ color: '#1c1e28', rim: 0 });
+  const TOWER = { w: 0.32, h: 0.34, d: 0.16 };
+  const tower = new THREE.Mesh(new RoundedBoxGeometry(TOWER.w, TOWER.h, TOWER.d, 3, 0.01), caseMat);
+  tower.position.y = TOWER.h / 2;
+  engine.add(tower);
+  for (const [fx, fz] of [[-0.12, -0.05], [0.12, -0.05], [-0.12, 0.05], [0.12, 0.05]]) engine.add(box(0.03, 0.012, 0.03, caseDark, fx, -0.004, fz));
+  // Side window, brass-framed, lit from inside.
+  const winW = 0.22;
+  const winH = 0.24;
+  const winX = -0.03;
+  const winY = 0.175;
+  engine.add(box(winW, winH, 0.004, caseDark, winX, winY, TOWER.d / 2 + 0.0005));
+  const innerGlow = new THREE.Mesh(
+    new THREE.PlaneGeometry(winW - 0.01, winH - 0.01),
+    new THREE.MeshBasicMaterial({ color: '#ff9a3c', transparent: true, opacity: 0.32, toneMapped: false, fog: false }),
+  );
+  innerGlow.position.set(winX, winY, TOWER.d / 2 + 0.003);
+  engine.add(innerGlow);
+  for (const [bx, by, bw, bh] of [[winX, winY + winH / 2, winW + 0.012, 0.008], [winX, winY - winH / 2, winW + 0.012, 0.008], [winX - winW / 2, winY, 0.008, winH], [winX + winW / 2, winY, 0.008, winH]]) {
+    engine.add(box(bw, bh, 0.008, brass, bx, by, TOWER.d / 2 + 0.003));
+  }
+  const gz = TOWER.d / 2 + 0.009;
+  const gearA = new THREE.Mesh(gearGeo(0.058, 14, 0.008), brass);
+  gearA.position.set(winX - 0.04, winY + 0.035, gz);
+  const gearB = new THREE.Mesh(gearGeo(0.041, 10, 0.008), copper);
+  gearB.position.set(winX + 0.052, winY - 0.012, gz);
+  const gearC = new THREE.Mesh(gearGeo(0.029, 7, 0.008), steel);
+  gearC.position.set(winX - 0.015, winY - 0.075, gz);
+  const flywheel = new THREE.Mesh(gearGeo(0.024, 6, 0.008), brass);
+  flywheel.position.set(winX + 0.068, winY + 0.075, gz);
+  // Front panel (the narrow end): power button, drive bay, ports, activity light.
+  const fx0 = TOWER.w / 2 + 0.001;
+  const powerButton = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.006, 16), brass);
+  powerButton.rotation.z = Math.PI / 2;
+  powerButton.position.set(fx0, 0.3, 0);
+  engine.add(powerButton, box(0.004, 0.03, 0.11, caseDark, fx0, 0.245, 0), box(0.005, 0.004, 0.08, brass, fx0 + 0.001, 0.245, 0));
+  for (const pz of [-0.03, 0, 0.03]) engine.add(box(0.004, 0.008, 0.018, caseDark, fx0, 0.2, pz));
+  for (let i = 0; i < 6; i++) engine.add(box(0.004, 0.004, 0.11, caseDark, fx0, 0.15 - i * 0.016, 0));
+  led('#5dff8a', fx0 + 0.001, 0.3, 0.035, engine);
+  led('#ffb03a', fx0 + 0.001, 0.3, -0.035, engine);
+  // Pressure gauge where the logo badge would be.
+  const dial = new THREE.Mesh(new THREE.CircleGeometry(0.016, 20), new THREE.MeshBasicMaterial({ color: '#f4e8c8' }));
+  dial.position.set(0.125, 0.3, TOWER.d / 2 + 0.002);
+  const dialRing = new THREE.Mesh(new THREE.TorusGeometry(0.017, 0.0035, 8, 20), brass);
+  dialRing.position.copy(dial.position);
+  const needle = new THREE.Group();
+  needle.add(box(0.002, 0.013, 0.001, new THREE.MeshBasicMaterial({ color: '#c8281e' }), 0, 0.006, 0));
+  needle.position.set(0.125, 0.3, TOWER.d / 2 + 0.0035);
+
+  // The engine on the lid: block, three cylinders with their pistons, an exhaust stack.
+  engine.add(box(0.16, 0.024, 0.1, steel, 0.02, TOWER.h + 0.012, 0));
+  const PISTON_Y = TOWER.h + 0.075;
+  const pistons = [-0.03, 0.02, 0.07].map((x, i) => {
+    const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.046, 16), copper);
+    sleeve.position.set(x, TOWER.h + 0.047, 0);
+    const pistonRod = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.06, 10), steel);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.009, 12), brass);
+    cap.position.y = 0.03;
+    const piston = new THREE.Group();
+    piston.add(pistonRod, cap);
+    piston.position.set(x, PISTON_Y, 0);
+    piston.userData.phase = (i / 3) * Math.PI * 2;
+    engine.add(sleeve, piston);
+    return piston;
+  });
+  const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.014, 0.13, 12), steel);
+  exhaust.position.set(-0.115, TOWER.h + 0.06, -0.03);
+  exhaust.rotation.z = 0.12;
+  engine.add(dial, dialRing, needle, gearA, gearB, gearC, flywheel, exhaust);
+  engine.scale.setScalar(0.6);
+  engine.position.set(-0.84, 0.006, -0.62);
+  engine.rotation.y = 0.34;
+  scene.add(shadow(engine));
+  innerGlow.castShadow = false;
+  const engineHome = engine.position.clone();
+  const smokeTex = colorTex(glowCanvas('rgba(235,235,245,0.75)', 'rgba(200,200,215,0.28)'));
+  const puffs = [0, 1, 2].map((i) => {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTex, transparent: true, depthWrite: false, opacity: 0, fog: false }));
+    sp.userData.phase = i / 3;
+    scene.add(sp);
+    return sp;
+  });
+
+  // The CV itself, as a sealed scroll at your elbow: click it to take a copy.
+  const cvScroll = new THREE.Group();
+  const scrollRoll = new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.027, 0.26, 28), parchmentMat);
+  scrollRoll.rotation.z = Math.PI / 2;
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.31, 12), darkWood);
+  rod.rotation.z = Math.PI / 2;
+  cvScroll.add(scrollRoll, rod, ball(0.012, gold, -0.16, 0, 0), ball(0.012, gold, 0.16, 0, 0));
+  const scrollRibbon = new THREE.Mesh(new THREE.TorusGeometry(0.0285, 0.006, 10, 28), toon({ color: '#c8281e', gloss: 0.5 }));
+  scrollRibbon.rotation.y = Math.PI / 2;
+  const waxSeal = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.022, 0.008, 20), toon({ color: '#b01c14', gloss: 0.9 }));
+  waxSeal.position.set(0, 0.028, 0.004);
+  const scrollTag = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.084, 0.032),
+    new THREE.MeshBasicMaterial({ map: colorTex(labelCanvas('CV.PDF', '#f4e8c8', '#a3261c', 256, 96)), side: THREE.DoubleSide }),
+  );
+  scrollTag.position.set(-0.07, 0.024, 0.028);
+  scrollTag.rotation.x = -0.95;
+  cvScroll.add(scrollRibbon, waxSeal, scrollTag);
+  cvScroll.position.set(0.25, 0.027, 0.1);
+  cvScroll.rotation.y = -0.22;
+  const scrollY = cvScroll.position.y;
+  scene.add(shadow(cvScroll));
+
+  // What comes out of the book when it opens: a column of light.
+  const pillar = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: colorTex(pillarCanvas()), color: '#ffe6a8', transparent: true, opacity: 0, depthWrite: false,
+    blending: THREE.AdditiveBlending, toneMapped: false, fog: false,
+  }));
+  pillar.center.set(0.5, 0);
+  pillar.position.set(book.position.x + 0.03, -0.06, book.position.z);
+  scene.add(pillar);
+  const blast = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: colorTex(glowCanvas('rgba(255, 250, 225, 1)', 'rgba(255, 210, 120, 0.5)')),
+    transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, fog: false,
+  }));
+  blast.position.set(book.position.x + 0.03, 0.1, book.position.z);
+  scene.add(blast);
+  const bookHome = book.position.clone();
+  const bookTurn = book.rotation.y;
+
   /* ----- the book glows while it waits to be opened ----- */
   const bookGlow = new THREE.Mesh(
     new THREE.PlaneGeometry(0.72, 0.84),
@@ -1717,6 +1981,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   const cauldronAura = aura('#7dff5a', 0.3, cauldron, 0.14);
   const wandAura = aura('#ffd45a', 0.12, wand, 0);
   wandAura.position.x = 0.135;
+  const scrollAura = aura('#ffd45a', 0.3, cvScroll, 0.02);
   const laptopAura = aura('#7fd4ff', 0.36, lid, 0.09);
   const orbAura = aura('#6ab8ff', 0.2, orbGroup, 0.075);
   orbAura.position.x = -0.22;
@@ -1820,6 +2085,18 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   addToy('robot', robot, () => { robotAt = now; });
   addToy('caseLeft', caseLeft, () => { crtIsOn = !crtIsOn; crtScreen.color.set(crtIsOn ? '#ffffff' : '#1a2a1e'); }, false);
   addToy('caseRight', caseRight, () => { robotAt = now; }, false);
+  let engineAt = -10;
+  let engineAngle = 0;
+  let lastT = 0;
+  addToy('engine', engine, () => { engineAt = now; }, false);
+  let scrollAt = -10;
+  addToy('cvScroll', cvScroll, () => { scrollAt = now; });
+  let sips = 0;
+  let coffeeK = 1;
+  let mugAt = -10;
+  addToy('mug', mug, () => { sips = (sips + 1) % 5; mugAt = now; });
+  let bugsAt = -10;
+  addToy('bugJar', bugJar, () => { bugsAt = now; }, false);
   let duckAt = -10;
   let keysAt = -10;
   let screenMode = 0;
@@ -1844,11 +2121,27 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     orbLight.color.set(ORBS[orbHue]);
   }, false);
 
+  // One golden halo that sits behind whatever the pointer is over.
+  const hoverHalo = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: colorTex(glowCanvas('rgba(255, 236, 170, 0.85)', 'rgba(255, 200, 90, 0.35)')),
+    transparent: true, opacity: 0, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, toneMapped: false, fog: false,
+  }));
+  hoverHalo.renderOrder = -1;
+  scene.add(hoverHalo);
+  let haloK = 0;
+  const hoverBox = new THREE.Box3();
+  const hoverSize = new THREE.Vector3();
+  const hoverTop = new THREE.Vector3();
+
   /* ----- camera rig ----- */
   const camHome = new THREE.Vector3();
   const lookHome = new THREE.Vector3();
   const camRead = new THREE.Vector3(-0.02, 0.52, 0.2);
   const lookRead = new THREE.Vector3(-0.02, 0.02, -0.1);
+  const camFar = new THREE.Vector3();
+  const lookFar = new THREE.Vector3();
+  let introK = opts.reducedMotion ? 1 : 0;
+  let introTween: { start: number; dur: number; done: () => void } | null = null;
   const camNow = new THREE.Vector3();
   const lookNow = new THREE.Vector3();
   const pointer = new THREE.Vector2();
@@ -1875,6 +2168,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     const half = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * aspect * (camHome.z + 1.3);
     windowGroup.position.x = -Math.min(0.66, Math.max(0.22, half - 0.34));
     placeBeam();
+    hangBunting(windowGroup.position.x + 0.36, Math.max(windowGroup.position.x + 1.2, Math.min(1.45, half)));
     shelf.visible = false;
     const corner = Math.min(1.42, half - 0.12);
     caseLeft.position.x = -corner;
@@ -1902,8 +2196,10 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
   let hover = false;
-  let locked = false; // true while opening / open / closing
+  let locked = !opts.reducedMotion; // true during the opening shot and while the book is opening / open / closing
   let progress = 0; // 0 closed, 1 open
+  /** True only while the book is being opened: that is when it strains, shakes and bursts. */
+  let opening = false;
   let tween: { from: number; to: number; start: number; dur: number; done: () => void } | null = null;
 
   let hoverToy: Toy | null = null;
@@ -1929,9 +2225,24 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
       pointer.set((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
     }
     const what = locked ? null : pick(e);
+    const before = hover ? 'book' : hoverToy;
     hover = what === 'book';
     hoverToy = what && what !== 'book' ? what : null;
     canvas.style.cursor = what ? 'pointer' : '';
+    if (what !== before) {
+      const target = what === 'book' ? book : what ? what.root : null;
+      if (target) {
+        hoverBox.setFromObject(target);
+        hoverBox.getSize(hoverSize);
+        hoverBox.getCenter(hoverHalo.position);
+        hoverHalo.scale.setScalar(Math.max(hoverSize.x, hoverSize.y, hoverSize.z) * 2.1);
+        hoverTop.set(hoverHalo.position.x, hoverBox.max.y, hoverHalo.position.z).project(camera);
+        const rect = canvas.getBoundingClientRect();
+        opts.onHover?.(what === 'book' ? 'book' : (what as Toy).id, ((hoverTop.x + 1) / 2) * rect.width, ((1 - hoverTop.y) / 2) * rect.height);
+      } else {
+        opts.onHover?.(null, 0, 0);
+      }
+    }
   };
   const onClick = (e: MouseEvent) => {
     if (locked) return;
@@ -1947,7 +2258,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
       opts.onPoke(what.id, ((top.x + 1) / 2) * rect.width, ((1 - top.y) / 2) * rect.height);
     }
   };
-  const onLeave = () => { hover = false; hoverToy = null; canvas.style.cursor = ''; };
+  const onLeave = () => { hover = false; hoverToy = null; canvas.style.cursor = ''; opts.onHover?.(null, 0, 0); };
   canvas.addEventListener('pointermove', onMove);
   canvas.addEventListener('pointerleave', onLeave);
   canvas.addEventListener('click', onClick);
@@ -1968,7 +2279,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
 
     if (tween) {
       const k = Math.min(1, (performance.now() - tween.start) / tween.dur);
-      progress = tween.from + (tween.to - tween.from) * ease(k);
+      progress = tween.from + (tween.to - tween.from) * (opening ? k : ease(k));
       if (k >= 1) {
         const done = tween.done;
         tween = null;
@@ -1978,19 +2289,52 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
 
     // The cover lifts a little under the pointer, as if inviting you in.
     peek += ((hover ? 1 : 0) - peek) * 0.12;
-    const coverK = THREE.MathUtils.clamp((progress - 0.06) / 0.86, 0, 1);
-    hinge.rotation.z = Math.max(peek * 0.07 * (1 - progress), coverK * OPEN_ANGLE);
+    // Opening is a three-beat scene: the book strains (charge), the cover flies open, light pours out (burst).
+    const charge = opening ? THREE.MathUtils.clamp(progress / 0.44, 0, 1) : 0;
+    const coverLin = opening
+      ? THREE.MathUtils.clamp((progress - 0.44) / 0.42, 0, 1)
+      : THREE.MathUtils.clamp((progress - 0.06) / 0.86, 0, 1);
+    const coverK = opening ? 1 - Math.pow(1 - coverLin, 3) : coverLin;
+    const burst = opening ? THREE.MathUtils.smoothstep(coverLin, 0, 0.3) * (1 - THREE.MathUtils.smoothstep(progress, 0.9, 1)) : 0;
+    const strain = charge * (1 - coverLin);
+    const rattle = still ? 0 : strain * Math.abs(Math.sin(t * 43)) * 0.07;
+    hinge.rotation.z = Math.max(peek * 0.07 * (1 - progress), coverK * OPEN_ANGLE, rattle);
     strapDrop.visible = progress < 0.03;
+    if (!still) {
+      book.position.set(bookHome.x + Math.sin(t * 71) * 0.003 * strain, bookHome.y + Math.abs(Math.sin(t * 57)) * 0.004 * strain, bookHome.z + Math.sin(t * 63) * 0.002 * strain);
+      book.rotation.set(Math.sin(t * 77) * 0.012 * strain, bookTurn, Math.sin(t * 89) * 0.014 * strain);
+    }
 
     if (!still) {
       sway.x += (pointer.x - sway.x) * 0.05;
       sway.y += (pointer.y - sway.y) * 0.05;
     }
     const breath = still ? 0 : Math.sin(t * 0.6) * 0.004;
-    camNow.copy(camHome).lerp(camRead, progress);
-    lookNow.copy(lookHome).lerp(lookRead, progress);
-    const free = 1 - progress;
+    if (introTween) {
+      const k = Math.min(1, (performance.now() - introTween.start) / introTween.dur);
+      introK = k;
+      if (k >= 1) {
+        const done = introTween.done;
+        introTween = null;
+        locked = false;
+        done();
+      }
+    }
+    // Opening shot: from high at the back of the room, down to your seat at the table.
+    const arrive = 1 - Math.pow(1 - introK, 3);
+    camFar.set(camHome.x - 0.28, camHome.y + 0.6, camHome.z + 1.25);
+    lookFar.set(lookHome.x, lookHome.y + 0.12, lookHome.z);
+    const lean = opening ? ease(progress) : progress;
+    camNow.copy(camFar).lerp(camHome, arrive).lerp(camRead, lean);
+    lookNow.copy(lookFar).lerp(lookHome, arrive).lerp(lookRead, lean);
+    const free = (1 - progress) * arrive;
     camera.position.set(camNow.x + sway.x * 0.07 * free, camNow.y - sway.y * 0.035 * free + breath * free, camNow.z);
+    if (!still) {
+      // The whole room shakes with it.
+      const shake = strain * 0.006 + burst * 0.011;
+      camera.position.x += Math.sin(t * 61) * shake;
+      camera.position.y += Math.sin(t * 53 + 1.3) * shake;
+    }
     camera.lookAt(lookNow.x + sway.x * 0.02 * free, lookNow.y, lookNow.z);
 
     if (!still) {
@@ -2033,7 +2377,13 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     now = t;
     toys.forEach((toy) => {
       toy.hoverK += ((toy === hoverToy ? 1 : 0) - toy.hoverK) * 0.18;
-      if (toy.bounce) toy.root.scale.setScalar(toy.base * (1 + 0.08 * toy.hoverK));
+      // Small loose things lift a touch under the pointer; fixed things only get the halo,
+      // because scaling them about their anchor would make them slide.
+      if (toy.bounce) toy.root.scale.setScalar(toy.base * (1 + 0.04 * toy.hoverK));
+    });
+    haloK += ((hover || hoverToy ? 1 : 0) - haloK) * 0.2;
+    hoverHalo.material.opacity = haloK * (0.5 + (still ? 0 : Math.sin(t * 5) * 0.12));
+    [0].forEach(() => {
     });
 
     // Candle: blow it out and the moon takes over.
@@ -2152,6 +2502,43 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     robot.position.y = robotY + (rb >= 0 && rb < 1 ? Math.abs(Math.sin(rb * Math.PI * 2)) * 0.04 : 0);
     robot.rotation.y = rb >= 0 && rb < 1 ? Math.sin(rb * Math.PI * 4) * 0.5 : 0;
 
+    // The mechanical computer idles; poke it and the engine revs.
+    const dt = Math.min(0.05, Math.max(0, t - lastT));
+    lastT = t;
+    const rev = Math.max(0, 1 - (t - engineAt) / 2.8);
+    engineAngle += (still ? 0 : 0.7 + rev * 13) * dt;
+    gearA.rotation.z = engineAngle;
+    gearB.rotation.z = -engineAngle * (14 / 10) + 0.2;
+    gearC.rotation.z = -engineAngle * (14 / 7);
+    innerGlow.material.opacity = 0.3 + rev * 0.5 + (still ? 0 : Math.sin(t * 5) * 0.04);
+    flywheel.rotation.z = -engineAngle * (14 / 6);
+    pistons.forEach((piston) => { piston.position.y = PISTON_Y + Math.sin(engineAngle * 2 + piston.userData.phase) * 0.012; });
+    needle.rotation.z = 0.9 - rev * 1.9 + (still ? 0 : Math.sin(t * 9) * 0.04 * (1 + rev * 3));
+    engine.position.set(engineHome.x + Math.sin(t * 67) * 0.0022 * rev, engineHome.y + Math.abs(Math.sin(t * 49)) * 0.003 * rev, engineHome.z);
+    puffs.forEach((sp) => {
+      const k = still ? 0.4 : (t * (0.25 + rev * 1.1) + sp.userData.phase) % 1;
+      sp.position.set(engineHome.x - 0.07 + k * 0.03, engineHome.y + 0.28 + k * 0.2, engineHome.z + 0.01);
+      sp.scale.setScalar(0.03 + k * (0.08 + rev * 0.08));
+      sp.material.opacity = Math.sin(k * Math.PI) * (0.14 + rev * 0.45);
+    });
+
+    // The CV scroll keeps glowing so it is never missed; a click makes it jump.
+    const sc = (t - scrollAt) / 0.6;
+    cvScroll.position.y = scrollY + (sc >= 0 && sc < 1 ? Math.sin(sc * Math.PI) * 0.06 : 0);
+    cvScroll.rotation.x = sc >= 0 && sc < 1 ? sc * Math.PI * 2 : 0;
+    scrollAura.scale.setScalar(0.3 + (still ? 0 : Math.sin(t * 2.6) * 0.05));
+
+    // Bugs potter about inside their jar; rattle it and they scurry.
+    const panic = Math.max(0, 1 - (t - bugsAt) / 2);
+    bugs.forEach((bug) => {
+      const u = bug.userData as { phase: number; speed: number; radius: number };
+      const a = (still ? 0 : t * u.speed * (1 + panic * 5)) + u.phase;
+      bug.position.set(Math.cos(a) * u.radius, 0.0085, Math.sin(a) * u.radius);
+      // Head first, whichever way round it is walking.
+      bug.rotation.set(0, -a - (u.speed > 0 ? Math.PI / 2 : -Math.PI / 2), 0);
+    });
+    bugJar.rotation.z = panic > 0.7 ? Math.sin(t * 46) * 0.08 * (panic - 0.7) / 0.3 : 0;
+
     // Duck: a squeaky hop.
     const dk = (t - duckAt) / 0.6;
     if (dk >= 0 && dk < 1) {
@@ -2174,26 +2561,44 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
       const k = still ? 0.4 : (t * 0.17 + sp.userData.phase) % 1;
       sp.position.set(mug.position.x + Math.sin(k * 5 + sp.userData.phase * 9) * 0.012, 0.09 + k * 0.16, mug.position.z);
       sp.scale.setScalar(0.04 + k * 0.08);
-      sp.material.opacity = Math.sin(k * Math.PI) * 0.22;
+      sp.material.opacity = Math.sin(k * Math.PI) * (0.08 + 0.2 * coffeeK);
     });
+    // Each poke is a sip; the fifth one is a refill.
+    coffeeK += (1 - sips / 4 - coffeeK) * 0.08;
+    coffee.position.y = 0.014 + 0.062 * coffeeK;
+    coffee.scale.setScalar(0.93 + 0.07 * coffeeK);
+    const tip = (t - mugAt) / 0.7;
+    mug.rotation.z = tip >= 0 && tip < 1 ? Math.sin(tip * Math.PI) * 0.35 : 0;
+    mug.position.y = tip >= 0 && tip < 1 ? Math.sin(tip * Math.PI) * 0.03 : 0;
 
     // The closed book glows and twinkles; the glow fades as it opens.
-    const closed = 1 - Math.min(1, progress * 2.5);
+    const closed = opening ? 1 - THREE.MathUtils.smoothstep(progress, 0.88, 1) : 1 - Math.min(1, progress * 2.5);
+    // As the book strains, the room goes dark around it; then the burst lights everything.
+    hemi.intensity *= 1 - 0.7 * strain + 0.12 * burst;
+    fill.intensity = 0.5 * (1 - 0.8 * strain) + 0.1 * burst;
+    candleLight.intensity *= 1 - strain * (0.45 + 0.35 * Math.abs(Math.sin(t * 31)));
+    pillar.material.opacity = burst * 0.75;
+    pillar.scale.set(0.5 + burst * 0.35, 0.7 + burst * 0.6, 1);
+    blast.material.opacity = burst * 0.55;
+    blast.scale.setScalar(0.25 + burst * 0.6);
     const pulse = still ? 0.8 : 0.72 + 0.28 * Math.sin(t * 2.2);
-    bookGlow.material.opacity = (0.34 + 0.2 * pulse + 0.22 * peek) * closed;
-    bookLight.intensity = (0.1 + 0.08 * pulse + 0.1 * peek) * closed;
-    const rim = { color: [1, 0.78 + 0.1 * pulse, 0.3], thickness: 0.0042 + (0.0035 * pulse + 0.003 * peek) * closed };
+    bookGlow.material.opacity = Math.min(1, (0.34 + 0.2 * pulse + 0.22 * peek + charge * 0.5) * closed);
+    bookGlow.scale.setScalar(1 + charge * 0.3 + burst * 0.4);
+    bookLight.intensity = (0.1 + 0.08 * pulse + 0.1 * peek + charge * 0.35 + burst * 0.5) * closed;
+    const rim = { color: [1, 0.78 + 0.1 * pulse, 0.3], thickness: 0.0042 + (0.0035 * pulse + 0.003 * peek + 0.006 * charge) * closed };
     const inkRim = { color: [0.13, 0.07, 0.05], thickness: 0.0042 };
     leatherMat.userData.outlineParameters = closed > 0.02 ? rim : inkRim;
     coverArt.userData.outlineParameters = closed > 0.02 ? rim : inkRim;
     twinkles.forEach((sp) => {
       const i = sp.userData.i as number;
-      const a = (still ? 0 : t * 0.5) + (i / twinkles.length) * Math.PI * 2;
-      const blink = Math.pow(Math.max(0, Math.sin(t * 2.4 + i * 1.9)), 3);
+      // Sparks circle the book, get sucked in as it strains, and are flung out by the burst.
+      const a = (still ? 0 : t * (0.5 + charge * 4)) + (i / twinkles.length) * Math.PI * 2;
+      const blink = Math.max(Math.pow(Math.max(0, Math.sin(t * 2.4 + i * 1.9)), 3), charge);
+      const reach = 1 - 0.5 * strain + burst * 2.4;
       sp.position.set(
-        book.position.x + Math.cos(a) * 0.19,
-        0.06 + 0.07 * (0.5 + 0.5 * Math.sin(a * 2 + i)),
-        book.position.z + Math.sin(a) * 0.24,
+        bookHome.x + Math.cos(a) * 0.19 * reach,
+        0.06 + 0.07 * (0.5 + 0.5 * Math.sin(a * 2 + i)) + burst * (0.25 + (i % 3) * 0.12),
+        bookHome.z + Math.sin(a) * 0.24 * reach,
       );
       sp.scale.setScalar(0.012 + blink * 0.028);
       sp.material.opacity = (0.25 + blink * 0.75) * closed;
@@ -2229,6 +2634,16 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     tween = { from: progress, to, start: performance.now(), dur, done: resolve };
   });
 
+  if (import.meta.env.DEV) {
+    // Lets a test freeze the opening shot at any point: __taleScrub(0.5).
+    (window as unknown as Record<string, unknown>).__taleScrub = (p: number) => {
+      introK = 1;
+      opening = p > 0 && p < 1;
+      progress = p;
+      tween = null;
+    };
+  }
+
   let coverTex: THREE.CanvasTexture | null = null;
 
   return {
@@ -2258,12 +2673,22 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
       portraitMat.color.set('#ffffff');
       portraitMat.needsUpdate = true;
     },
+    intro() {
+      if (opts.reducedMotion || introK >= 1) {
+        introK = 1;
+        locked = false;
+        return Promise.resolve();
+      }
+      return new Promise((resolve) => { introTween = { start: performance.now(), dur: 3200, done: resolve }; });
+    },
     open() {
       locked = true;
       hover = false;
       canvas.style.cursor = '';
       hoverToy = null;
-      return run(1, 1700);
+      opts.onHover?.(null, 0, 0);
+      opening = !opts.reducedMotion;
+      return run(1, opts.reducedMotion ? 0 : 3600).then(() => { opening = false; });
     },
     close() {
       return run(0, 900).then(() => { locked = false; });
