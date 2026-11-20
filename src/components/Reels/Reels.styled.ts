@@ -306,6 +306,19 @@ export const Layout = styled.div`
     &:active { transform: scale(0.97); }
   }
 
+  /* Secondary CV versions: quiet text links under the main button. */
+  .cv-alt {
+    position: relative;
+    z-index: 3;
+    margin: 8px var(--rail) 0 0;
+    font-size: 12.5px;
+    opacity: 0.8;
+    text-align: center;
+
+    a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+    a:hover { opacity: 1; }
+  }
+
   /* Always-visible CV button on phones, inverted against the current reel. */
   .cv-pill {
     position: absolute;

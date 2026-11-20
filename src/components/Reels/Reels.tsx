@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Layout } from './Reels.styled';
-import { buildReels, ChapterKey, CV_URL } from './slides';
+import { buildReels, ChapterKey, CV_URL, CvAlt } from './slides';
 import { HeartIcon, DownloadIcon, MailIcon, ShareIcon, ArrowIcon } from './icons';
 import Sheet, { SheetContext, SheetData } from './sheet';
 import { useLanguage } from '@hooks/useLanguage';
@@ -206,6 +206,7 @@ const Reels: React.FC = () => {
             ))}
           </nav>
           <a className="cv-big" href={CV_URL} download>↓ {tr.ui.downloadCv}</a>
+          <CvAlt tr={tr} />
           <p className="keys">↑ ↓ · J K</p>
         </aside>
 
