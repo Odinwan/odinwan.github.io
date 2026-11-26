@@ -909,10 +909,10 @@ export const Root = styled.div`
     .variants { order: 2; flex: 1 0 100%; }
     .lang { order: 1; }
     .hint { bottom: calc(18px + env(safe-area-inset-bottom)); }
-    /* On a phone the row is a column up the right edge, above the buttons. */
-    .callers { flex-direction: column; right: 10px; bottom: calc(150px + env(safe-area-inset-bottom)); > button:not([class]) { width: 42px; height: 42px; font-size: 19px; } }
-    /* On phones the plaque sits above both buttons and stops short of the callers' column. */
-    .help { left: 10px; width: min(300px, calc(100% - 72px)); bottom: calc(124px + env(safe-area-inset-bottom)); }
+    /* On a phone the row sits just above the buttons, across from the "?", clear of the things on the table. */
+    .callers { right: 10px; bottom: calc(124px + env(safe-area-inset-bottom)); > button:not([class]) { width: 42px; height: 42px; font-size: 19px; } }
+    /* On phones the plaque sits above both buttons and above the callers' row. */
+    .help { left: 10px; width: min(300px, calc(100% - 20px)); bottom: calc(180px + env(safe-area-inset-bottom)); }
     /* The "?" goes up with it: beside the buttons there is no room for it on a narrow screen. */
     .help-open { left: 10px; bottom: calc(124px + env(safe-area-inset-bottom)); }
     .bubble { font-size: 14px; max-width: min(240px, calc(100% - 24px)); }

@@ -2212,7 +2212,7 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   };
   const caseLeft = makeCase(-1);
   const caseRight = makeCase(1);
-  const robotY = robot.position.y;
+  let robotY = robot.position.y;
 
   // A jar of bugs, safely caught. Bugs: under control.
   const bugJar = new THREE.Group();
@@ -2992,10 +2992,27 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   let autoNext = -1;
   const callVisitor = (kind?: 'owl' | 'mail' | 'knock') => {
     if (locked || now < evNext || mailState === 'fly' || owlStage > 0) return;
-    // A letter needs an open window and a clear table; otherwise it has to be a knock.
-    const letterCan = mailState === 'idle' && !darkOn && !opts.reducedMotion;
     const dice = Math.random();
     const pick = kind ?? (dice < 0.35 ? 'owl' : dice < 0.68 ? 'mail' : 'knock');
+    if (kind && kind !== 'knock') {
+      // Asked for by name, so it must be what turns up: the way is cleared for it.
+      // An unread letter makes room for the new one, and the lights come back on to open the shutters.
+      if (mailState === 'rest') { mailState = 'idle'; mailEnv.position.copy(MAIL_AWAY); }
+      if (darkOn) { darkOn = false; cordAt = now; cordVel -= 1.9; hoodPuffAt = now; opts.onEvent?.('lights-on'); }
+      if (opts.reducedMotion) {
+        // Nothing flies when motion is unwelcome: the letter is simply there on the table.
+        evNext = now + 2;
+        opts.onEvent?.(kind === 'owl' ? 'mail-owl' : 'mail');
+        mailState = 'rest';
+        mailEnv.position.copy(MAIL_REST);
+        mailEnv.rotation.set(0, 0.3, 0);
+        mailEnv.scale.setScalar(1);
+        opts.onEvent?.('mail-land');
+        return;
+      }
+    }
+    // By itself, a letter needs an open window and a clear table; otherwise it has to be a knock.
+    const letterCan = mailState === 'idle' && !darkOn && !opts.reducedMotion;
     if (letterCan && pick === 'owl') { evNext = now + 10; startOwl(); } else if (letterCan && pick === 'mail') { evNext = now + 7; startMail(); } else { evNext = now + 4.5; startKnock(); }
   };
   const startKnock = () => {
@@ -3047,34 +3064,104 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
   const pointer = new THREE.Vector2();
   const sway = new THREE.Vector2();
 
+  /**
+   * An upright screen shows a narrow, deep slice of the room, so the same things are set out again for it:
+   * closer to the middle and further back in rows, with the high wall above the window put to use.
+   * [thing, x, z] on the table.
+   */
+  const TALL_SPOTS: Array<[THREE.Object3D, number, number]> = [
+    [cauldron, -0.46, -0.96], [chest, -0.07, -0.95], [coins, -0.07, -0.95], [engine, 0.2, -1.02], [grove, 0.58, -0.88],
+    [stack, -0.25, -0.6], [bugJar, 0.05, -0.6], [laptop, 0.35, -0.58],
+    [writing, -0.42, -0.34], [duck, -0.25, -0.4], [letter, -0.34, -0.17], [floppies, -0.02, -0.4],
+    [candle, 0.22, -0.3], [crystals, 0.42, -0.34], [mug, 0.4, -0.13], [potion, 0.3, 0.0],
+    [cvScroll, 0.16, 0.15], [wand, -0.17, 0.22], [keyboard, -0.13, 0.38],
+  ];
+  const homeSpots = TALL_SPOTS.map(([thing]) => thing.position.clone());
+  const robotHome = { parent: robot.parent as THREE.Object3D, at: robot.position.clone(), y: robotY };
+  const candleHome = CANDLE.clone();
+
   const layout = () => {
     const w = canvas.clientWidth || 1;
     const h = canvas.clientHeight || 1;
     renderer.setSize(w, h, false);
     const aspect = w / h;
     camera.aspect = aspect;
-    rbTall = aspect < 0.8;
-    if (aspect < 0.8) {
-      // Portrait: stand further back so the whole table fits between the edges.
+    const tall = aspect < 0.8;
+    rbTall = tall;
+    if (tall) {
+      // Portrait: stand further back and higher, so the rows of things fit between the edges.
       camera.fov = 66;
-      camHome.set(0, 0.62, 1.14);
-      lookHome.set(0, 0.2, -0.4);
+      camHome.set(0, 0.74, 1.3);
+      lookHome.set(0, 0.26, -0.4);
     } else {
       camera.fov = aspect < 1.3 ? 58 : 52;
       camHome.set(0, 0.36, 0.66);
       lookHome.set(0, 0.16, -0.4);
     }
     camera.updateProjectionMatrix();
+    // The table: each thing in its own place for this shape of screen.
+    TALL_SPOTS.forEach(([thing, x, z], i) => {
+      if (tall) { thing.position.x = x; thing.position.z = z; } else { thing.position.x = homeSpots[i].x; thing.position.z = homeSpots[i].z; }
+    });
+    if (tall) CANDLE.set(0.22, 0, -0.3); else CANDLE.copy(candleHome);
+    candleLight.position.x = CANDLE.x;
+    candleLight.position.z = CANDLE.z;
+    potionLight.position.x = potion.position.x;
+    potionLight.position.z = potion.position.z;
+    engineHome.copy(engine.position);
+    // The bookcases do not fit an upright screen, so the robot steps down from its shelf onto the table.
+    if (tall && robot.parent !== scene) {
+      scene.add(robot);
+      robotY = 0.07;
+      robot.position.set(-0.46, robotY, -0.64);
+      robot.rotation.y = 0.35;
+    } else if (!tall && robot.parent === scene) {
+      robotHome.parent.add(robot);
+      robotY = robotHome.y;
+      robot.position.copy(robotHome.at);
+      robot.rotation.y = 0;
+    }
     // Keep the window and the shelf inside the picture on narrow screens.
     const half = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * aspect * (camHome.z + 1.3);
     windowGroup.position.x = -Math.min(0.66, Math.max(0.22, half - 0.34));
     placeBeam();
-    hangBunting(windowGroup.position.x + 0.36, Math.max(windowGroup.position.x + 1.2, Math.min(1.45, half)));
     shelf.visible = false;
     const corner = Math.min(1.42, half - 0.12);
     caseLeft.position.x = -corner;
     caseRight.position.x = corner;
-    caseLeft.visible = caseRight.visible = half > 1.2;
+    caseLeft.visible = caseRight.visible = !tall && half > 1.2;
+    // The cord hangs right in front of you, in the upper right of the picture, whatever the screen.
+    const reach = 0.62;
+    const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    const ahead = lookHome.clone().sub(camHome).normalize().multiplyScalar(reach).add(camHome);
+    pullCord.position.set(ahead.x + tanV * aspect * reach * 0.8, ahead.y + tanV * reach * 0.42, ahead.z);
+    renderer.shadowMap.needsUpdate = true;
+    if (tall) {
+      // The wall, in two storeys: window and curio shelf below; portrait, lantern and sprint board above; bunting over all.
+      const wx = windowGroup.position.x;
+      const edge = Math.min(0.95, half - 0.04);
+      bunting.position.y = 0.56;
+      hangBunting(-edge, edge);
+      portrait.visible = true;
+      portrait.position.set(wx, 1.1, -1.28);
+      const room = Math.min(0.68, edge - (wx + 0.36));
+      const fit = Math.max(0.5, Math.min(1, room / 0.68));
+      curio.visible = true;
+      curio.scale.setScalar(fit);
+      curio.position.x = wx + 0.36 + 0.34 * fit;
+      curio.position.y = 0.6;
+      board.visible = true;
+      board.position.x = Math.min(curio.position.x, edge - 0.22);
+      board.position.y = 1.06;
+      lantern.visible = true;
+      lantern.position.set(wx + 0.34, 1.12, -1.05);
+      return;
+    }
+    bunting.position.y = 0;
+    board.position.y = 0.36;
+    portrait.position.y = 0.55;
+    lantern.position.y = 0.72;
+    hangBunting(windowGroup.position.x + 0.36, Math.max(windowGroup.position.x + 1.2, Math.min(1.45, half)));
     // Along the wall, left to right: window, portrait, curio shelf. Each takes its place
     // only if there is room, so nothing is ever drawn across its neighbour.
     const windowRight = windowGroup.position.x + 0.31;
@@ -3090,11 +3177,6 @@ export const createStage = (canvas: HTMLCanvasElement, opts: StageOptions): Stag
     board.position.x = Math.max(0.86, curio.position.x + 0.33 * fit + 0.26);
     board.visible = half > 1.25;
     lantern.position.x = windowGroup.position.x - 0.42;
-    // The cord hangs right in front of you, in the upper right of the picture, whatever the screen.
-    const reach = 0.62;
-    const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    const ahead = lookHome.clone().sub(camHome).normalize().multiplyScalar(reach).add(camHome);
-    pullCord.position.set(ahead.x + tanV * aspect * reach * 0.8, ahead.y + tanV * reach * 0.42, ahead.z);
     lantern.visible = half > 1.2;
   };
 
