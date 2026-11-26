@@ -50,7 +50,7 @@ export const t = {
     },
     about: {
       title: 'Who I am',
-      p1: "Senior Frontend / Fullstack Developer from Moldova. iGaming, business software, travel, hospitality and investment platforms — from a UI library used by 10+ products and a ~340k-line Next.js 16 app to an investment platform I built end to end.",
+      p1: "Senior Frontend / Fullstack Developer from Moldova. Entertainment, business software, travel, hospitality and investment platforms — from a UI library used by 10+ products and a ~340k-line Next.js 16 app to an investment platform I built end to end.",
       p2: 'Went from Bitrix developer to Technical Lead: architecture, hiring, delivery planning and infrastructure. I design the architecture and write the code myself. AI is a tool on top of that, not a substitute: Claude Code with project context, skills, subagents and MCP takes the routine, and I check what it produces with types, tests and my own review.',
       facts: [
         { lbl: 'Education', val: 'Transnistrian State University — B.Sc. Software Engineering, 2013–2017' },
@@ -63,7 +63,7 @@ export const t = {
       jobs: [
         {
           role: 'Senior Frontend Developer',
-          company: 'iGaming Platform (NDA)',
+          company: 'Freelance / Contract (NDA)',
           note: 'Real-time entertainment platform with crypto wallets and payments',
           period: 'May 2026 — Present',
           current: true,
@@ -284,7 +284,7 @@ export const t = {
     },
     about: {
       title: 'Кто я',
-      p1: 'Senior Frontend / Fullstack-разработчик из Молдовы. iGaming, бизнес-софт, travel, гостиничные и инвестиционные платформы — от UI-библиотеки для 10+ продуктов и приложения на Next.js 16 на ~340k строк до инвестиционной платформы, которую построил с нуля.',
+      p1: 'Senior Frontend / Fullstack-разработчик из Молдовы. Развлекательные, travel, гостиничные и инвестиционные платформы, бизнес-софт — от UI-библиотеки для 10+ продуктов и приложения на Next.js 16 на ~340k строк до инвестиционной платформы, которую построил с нуля.',
       p2: 'Прошёл путь от Bitrix-разработчика до техлида: архитектура, найм, планирование поставки и инфраструктура. Архитектуру проектирую и код пишу сам. ИИ для меня — инструмент, а не замена: Claude Code с контекстом проекта, skills, сабагентами и MCP берёт на себя рутину, а результат я проверяю типами, тестами и собственным ревью.',
       facts: [
         { lbl: 'Образование', val: 'ПГУ им. Шевченко — бакалавр, программная инженерия, 2013–2017' },
@@ -297,7 +297,7 @@ export const t = {
       jobs: [
         {
           role: 'Senior Frontend Developer',
-          company: 'iGaming-платформа (NDA)',
+          company: 'Фриланс / контракт (NDA)',
           note: 'Realtime-развлекательная платформа с крипто-кошельками и платежами',
           period: 'Май 2026 — н.в.',
           current: true,
